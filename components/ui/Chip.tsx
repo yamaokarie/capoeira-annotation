@@ -11,15 +11,17 @@ export function Chip({
     <button
       onClick={onClick}
       style={{
-        height: "var(--height-chip)",
+        width: "100%",
+        height: "var(--height-chip-lg)",
+        boxSizing: "border-box",
         borderRadius: "var(--radius-pill)",
         backgroundColor: selected ? "var(--cream)" : "transparent",
         color: selected ? "var(--ink)" : "var(--on-dark)",
         border: `1px solid ${selected ? "var(--ink)" : "var(--hairline-strong)"}`,
-        fontWeight: selected ? 600 : 400,
+        fontWeight: selected ? 600 : 500,
         cursor: "pointer",
-        fontSize: "14px",
-        padding: "0 16px",
+        fontSize: "16px",
+        padding: "0 20px",
       }}
     >
       {label}

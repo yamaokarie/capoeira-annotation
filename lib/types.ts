@@ -19,7 +19,9 @@ export interface AnnotationRecord {
   whyMode: "voice" | "text";
   transcript: string;
   whyText: string;
+  surprising: boolean | null;
   tags: string[];
+  endingType: string | null;
   createdAt: string;
 }
 
@@ -27,5 +29,7 @@ export type CapturePhase =
   | "select"
   | "playing"
   | "why"
+  | "surprising"
   | "tags"
+  | "ending"
   | "done";

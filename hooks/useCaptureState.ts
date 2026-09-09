@@ -5,14 +5,18 @@ interface Answers {
   whyMode: "voice" | "text";
   transcript: string;
   whyText: string;
+  surprising: boolean | null;
   tags: string[];
+  endingType: string | null;
 }
 
 const initialAnswers: Answers = {
   whyMode: "voice",
   transcript: "",
   whyText: "",
+  surprising: null,
   tags: [],
+  endingType: null,
 };
 
 export function useCaptureState() {

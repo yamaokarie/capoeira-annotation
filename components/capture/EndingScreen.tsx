@@ -2,19 +2,24 @@ import { useState } from "react";
 import { Chip } from "@/components/ui/Chip";
 import { PillButton } from "@/components/ui/Button";
 import { ArrowIcon } from "@/components/ui/icons";
-import { TAGS } from "@/lib/taxonomy";
+import { ENDING_TYPES } from "@/lib/taxonomy";
 import { CaptureFooter } from "@/components/capture/CaptureFooter";
 
-interface TagsScreenProps {
-  selectedTags: string[];
-  onToggleTag: (value: string) => void;
+interface EndingScreenProps {
+  endingType: string | null;
+  onEndingTypeChange: (value: string) => void;
   onBack: () => void;
-  onNext: () => void;
+  onSave: () => void;
 }
 
-export function TagsScreen({ selectedTags, onToggleTag, onBack, onNext }: TagsScreenProps) {
+export function EndingScreen({
+  endingType,
+  onEndingTypeChange,
+  onBack,
+  onSave,
+}: EndingScreenProps) {
   const [lastTapped, setLastTapped] = useState<string | null>(null);
-  const activeDefinition = TAGS.find((tag) => tag.value === lastTapped)?.definition;
+  const activeDefinition = ENDING_TYPES.find((ending) => ending.value === lastTapped)?.definition;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", paddingBottom: "88px" }}>
@@ -26,7 +31,7 @@ export function TagsScreen({ selectedTags, onToggleTag, onBack, onNext }: TagsSc
           marginBottom: "var(--gap-lg)",
         }}
       >
-        What kind of moment was it?
+        How did the exchange end?
       </h1>
 
       <div
@@ -37,14 +42,14 @@ export function TagsScreen({ selectedTags, onToggleTag, onBack, onNext }: TagsSc
           marginBottom: "var(--gap-md)",
         }}
       >
-        {TAGS.map((tag) => (
+        {ENDING_TYPES.map((ending) => (
           <Chip
-            key={tag.value}
-            label={tag.label}
-            selected={selectedTags.includes(tag.value)}
+            key={ending.value}
+            label={ending.label}
+            selected={endingType === ending.value}
             onClick={() => {
-              setLastTapped(tag.value);
-              onToggleTag(tag.value);
+              setLastTapped(ending.value);
+              onEndingTypeChange(ending.value);
             }}
           />
         ))}
@@ -61,13 +66,13 @@ export function TagsScreen({ selectedTags, onToggleTag, onBack, onNext }: TagsSc
           marginBottom: "var(--gap-lg)",
         }}
       >
-        {activeDefinition ?? "Pick as many as fit — or none"}
+        {activeDefinition ?? "Pick the one that fits best — or none"}
       </p>
 
       <CaptureFooter>
         <button
           onClick={onBack}
-          aria-label="Back to why screen"
+          aria-label="Back to tags screen"
           style={{
             width: "var(--height-circular)",
             height: "var(--height-circular)",
@@ -86,14 +91,8 @@ export function TagsScreen({ selectedTags, onToggleTag, onBack, onNext }: TagsSc
           </span>
         </button>
         <div style={{ flex: 1 }}>
-          <PillButton onClick={onNext}>
-            {selectedTags.length > 0 ? (
-              <>
-                Continue <ArrowIcon size={17} color="#0c0a09" />
-              </>
-            ) : (
-              "Skip"
-            )}
+          <PillButton onClick={onSave}>
+            Save <ArrowIcon size={17} color="#0c0a09" />
           </PillButton>
         </div>
       </CaptureFooter>

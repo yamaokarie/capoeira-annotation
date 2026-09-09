@@ -45,3 +45,28 @@ export const TAGS = [
 ] as const;
 
 export type TagValue = (typeof TAGS)[number]["value"];
+
+export const ENDING_TYPES = [
+  {
+    label: "Clean Break",
+    value: "clean break",
+    definition: "Both players acknowledge a definitive end",
+  },
+  {
+    label: "Reset",
+    value: "reset",
+    definition: "Dissolves back into ginga, no clear conclusion",
+  },
+  {
+    label: "Takedown",
+    value: "takedown",
+    definition: "Someone went to the ground",
+  },
+  {
+    label: "Laughter",
+    value: "laughter",
+    definition: "The tension became play",
+  },
+] as const;
+
+export type EndingType = (typeof ENDING_TYPES)[number]["value"];

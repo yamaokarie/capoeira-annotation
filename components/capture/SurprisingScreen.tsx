@@ -1,21 +1,21 @@
-import { useState } from "react";
 import { Chip } from "@/components/ui/Chip";
 import { PillButton } from "@/components/ui/Button";
 import { ArrowIcon } from "@/components/ui/icons";
-import { TAGS } from "@/lib/taxonomy";
 import { CaptureFooter } from "@/components/capture/CaptureFooter";
 
-interface TagsScreenProps {
-  selectedTags: string[];
-  onToggleTag: (value: string) => void;
+interface SurprisingScreenProps {
+  surprising: boolean | null;
+  onSurprisingChange: (value: boolean) => void;
   onBack: () => void;
   onNext: () => void;
 }
 
-export function TagsScreen({ selectedTags, onToggleTag, onBack, onNext }: TagsScreenProps) {
-  const [lastTapped, setLastTapped] = useState<string | null>(null);
-  const activeDefinition = TAGS.find((tag) => tag.value === lastTapped)?.definition;
-
+export function SurprisingScreen({
+  surprising,
+  onSurprisingChange,
+  onBack,
+  onNext,
+}: SurprisingScreenProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", paddingBottom: "88px" }}>
       <h1
@@ -26,7 +26,7 @@ export function TagsScreen({ selectedTags, onToggleTag, onBack, onNext }: TagsSc
           marginBottom: "var(--gap-lg)",
         }}
       >
-        What kind of moment was it?
+        Was the moment surprising?
       </h1>
 
       <div
@@ -34,35 +34,12 @@ export function TagsScreen({ selectedTags, onToggleTag, onBack, onNext }: TagsSc
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
           gap: "var(--gap-md)",
-          marginBottom: "var(--gap-md)",
-        }}
-      >
-        {TAGS.map((tag) => (
-          <Chip
-            key={tag.value}
-            label={tag.label}
-            selected={selectedTags.includes(tag.value)}
-            onClick={() => {
-              setLastTapped(tag.value);
-              onToggleTag(tag.value);
-            }}
-          />
-        ))}
-      </div>
-
-      <p
-        style={{
-          fontFamily: "var(--font-serif-italic)",
-          fontStyle: "italic",
-          fontSize: "18px",
-          lineHeight: 1.5,
-          color: "var(--on-dark-soft)",
-          marginTop: 0,
           marginBottom: "var(--gap-lg)",
         }}
       >
-        {activeDefinition ?? "Pick as many as fit — or none"}
-      </p>
+        <Chip label="Yes" selected={surprising === true} onClick={() => onSurprisingChange(true)} />
+        <Chip label="No" selected={surprising === false} onClick={() => onSurprisingChange(false)} />
+      </div>
 
       <CaptureFooter>
         <button
@@ -87,7 +64,7 @@ export function TagsScreen({ selectedTags, onToggleTag, onBack, onNext }: TagsSc
         </button>
         <div style={{ flex: 1 }}>
           <PillButton onClick={onNext}>
-            {selectedTags.length > 0 ? (
+            {surprising !== null ? (
               <>
                 Continue <ArrowIcon size={17} color="#0c0a09" />
               </>

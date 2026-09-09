@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { SelectVideoScreen } from "@/components/capture/SelectVideoScreen";
 import { PlayingScreen } from "@/components/capture/PlayingScreen";
 import { WhyScreen } from "@/components/capture/WhyScreen";
+import { SurprisingScreen } from "@/components/capture/SurprisingScreen";
 import { TagsScreen } from "@/components/capture/TagsScreen";
+import { EndingScreen } from "@/components/capture/EndingScreen";
 import { DoneScreen } from "@/components/capture/DoneScreen";
 import { GradientOrbs } from "@/components/capture/GradientOrbs";
 import { ContextScrubber } from "@/components/capture/ContextScrubber";
@@ -30,10 +32,14 @@ export default function Home() {
   // `playing` prop otherwise) — drives the context scrubber during capture.
   const [videoPlaying, setVideoPlaying] = useState(false);
 
-  // "why" and "tags" are both the dark, orb-backed capture screens; "tags" is
-  // text-only (no video/timeline), so it's excluded from `showVideo` below.
+  // "why", "surprising", "tags", and "ending" are all the dark, orb-backed
+  // capture screens; "surprising"/"tags"/"ending" are text-only (no video/
+  // timeline), so they're excluded from `showVideo` below.
   const isCapturePhase =
-    captureState.phase === "why" || captureState.phase === "tags";
+    captureState.phase === "why" ||
+    captureState.phase === "surprising" ||
+    captureState.phase === "tags" ||
+    captureState.phase === "ending";
   const showVideo =
     captureState.phase === "playing" || captureState.phase === "why";
   const showTopControls = captureState.phase === "playing" || isCapturePhase;
@@ -244,6 +250,15 @@ export default function Home() {
             onWhyTextChange={(text) => captureState.updateAnswer("whyText", text)}
             onTranscriptChange={(transcript) => captureState.updateAnswer("transcript", transcript)}
             onBack={handleCancel}
+            onNext={() => captureState.setPhase("surprising")}
+          />
+        )}
+
+        {captureState.phase === "surprising" && (
+          <SurprisingScreen
+            surprising={captureState.answers.surprising}
+            onSurprisingChange={(value) => captureState.updateAnswer("surprising", value)}
+            onBack={() => captureState.setPhase("why")}
             onNext={() => captureState.setPhase("tags")}
           />
         )}
@@ -260,8 +275,17 @@ export default function Home() {
                   : [...current, value]
               );
             }}
-            onBack={() => captureState.setPhase("why")}
-            onNext={() => captureState.setPhase("done")}
+            onBack={() => captureState.setPhase("surprising")}
+            onNext={() => captureState.setPhase("ending")}
+          />
+        )}
+
+        {captureState.phase === "ending" && (
+          <EndingScreen
+            endingType={captureState.answers.endingType}
+            onEndingTypeChange={(value) => captureState.updateAnswer("endingType", value)}
+            onBack={() => captureState.setPhase("tags")}
+            onSave={() => captureState.setPhase("done")}
           />
         )}
 
