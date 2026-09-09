@@ -9,16 +9,24 @@ interface AirtableVideoRecord {
   };
 }
 
+// Fallback catalog when Airtable credentials aren't configured (local dev / demo).
+const DEV_MOCK_VIDEOS = [
+  {
+    videoId: "T7SfSQ16wu8",
+    videoTitle: "Mestre Tico — Jogo Angola",
+    youtubeId: "T7SfSQ16wu8",
+    style: "angola" as const,
+    thumbnailUrl: "https://i.ytimg.com/vi/T7SfSQ16wu8/hqdefault.jpg",
+  },
+];
+
 export async function GET() {
   const token = process.env.AIRTABLE_TOKEN;
   const baseId = process.env.AIRTABLE_BASE_ID;
   const table = process.env.AIRTABLE_VIDEOS_TABLE || "Videos";
 
   if (!token || !baseId) {
-    return NextResponse.json(
-      { error: "Airtable credentials missing" },
-      { status: 500 }
-    );
+    return NextResponse.json({ videos: DEV_MOCK_VIDEOS });
   }
 
   try {
