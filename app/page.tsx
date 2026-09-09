@@ -1,69 +1,310 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { SelectVideoScreen } from "@/components/capture/SelectVideoScreen";
+import { PlayingScreen } from "@/components/capture/PlayingScreen";
+import { WhyScreen } from "@/components/capture/WhyScreen";
+import { QuestionScreen } from "@/components/capture/QuestionScreen";
+import { DoneScreen } from "@/components/capture/DoneScreen";
+import { GradientOrbs } from "@/components/capture/GradientOrbs";
+import { ContextScrubber } from "@/components/capture/ContextScrubber";
+import { YouTubePlayer } from "@/components/video/YouTubePlayer";
+import type { YouTubePlayerHandle } from "@/components/video/YouTubePlayer";
+import { CaptureTopbar } from "@/components/capture/CaptureTopbar";
+import { CloseIcon } from "@/components/ui/icons";
+import { useCaptureState } from "@/hooks/useCaptureState";
+import { useVideoPlayer } from "@/hooks/useVideoPlayer";
+import { OFFER_TYPES, ENDING_TYPES, YES_NO } from "@/lib/taxonomy";
+import type { Video } from "@/lib/types";
 
 export default function Home() {
+  const captureState = useCaptureState();
+  const videoPlayer = useVideoPlayer();
+  const playerRef = useRef<YouTubePlayerHandle>(null);
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [videosLoading, setVideosLoading] = useState(true);
+  const [videosError, setVideosError] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  // Reflects YouTube's actual play state, including playback resumed via
+  // the iframe's own native center button while frozen (invisible to our
+  // `playing` prop otherwise) — drives the context scrubber during capture.
+  const [videoPlaying, setVideoPlaying] = useState(false);
+
+  const isCapturePhase =
+    captureState.phase === "why" ||
+    captureState.phase === "q1" ||
+    captureState.phase === "q2" ||
+    captureState.phase === "q3";
+
+  useEffect(() => {
+    fetch("/api/videos")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) {
+          setVideosError(data.error);
+        } else {
+          setVideos(data.videos || []);
+        }
+        setVideosLoading(false);
+      })
+      .catch(() => {
+        setVideosError("Failed to reach the server");
+        setVideosLoading(false);
+      });
+  }, []);
+
+  const selectedVideoData = videos.find(
+    (v) => v.videoId === captureState.selectedVideo
+  );
+
+  // Start playing as soon as a video is chosen.
+  useEffect(() => {
+    if (captureState.selectedVideo) {
+      videoPlayer.setPlaying(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [captureState.selectedVideo]);
+
+  // Poll the real player position while actively playing, to drive the
+  // scrub row and give the freeze button an accurate timestamp.
+  useEffect(() => {
+    if (captureState.phase === "playing") {
+      const id = setInterval(() => {
+        setCurrentTime(playerRef.current?.getCurrentTime() ?? 0);
+        setDuration(playerRef.current?.getDuration() ?? 0);
+      }, 250);
+      return () => clearInterval(id);
+    }
+    // During capture (why/q1/q2/q3) the app's own transport is hidden, but
+    // the frozen frame can still be resumed via YouTube's native center
+    // button — keep the context scrubber's head advancing when that happens.
+    if (isCapturePhase && videoPlaying) {
+      const id = setInterval(() => {
+        setCurrentTime(playerRef.current?.getCurrentTime() ?? 0);
+      }, 250);
+      return () => clearInterval(id);
+    }
+  }, [captureState.phase, isCapturePhase, videoPlaying]);
+
+  if (captureState.phase === "select" || !selectedVideoData) {
+    return (
+      <SelectVideoScreen
+        videos={videos}
+        loading={videosLoading}
+        error={videosError}
+        onSelectVideo={(videoId) => {
+          captureState.setSelectedVideo(videoId);
+          captureState.setPhase("playing");
+        }}
+        onVideoAdded={(video) => setVideos((prev) => [...prev, video])}
+        annotatorName={captureState.annotatorName}
+        onAnnotatorNameChange={captureState.setAnnotatorName}
+      />
+    );
+  }
+
+  const handleFreeze = () => {
+    const frozenTime = playerRef.current?.getCurrentTime() ?? 0;
+    captureState.setFrozenAt(frozenTime);
+    // Keeps the context scrubber's head exactly aligned with the red dot
+    // at the moment of freezing, rather than waiting for the next poll tick.
+    setCurrentTime(frozenTime);
+    captureState.setPhase("why");
+    videoPlayer.setPlaying(false);
+  };
+
+  const handleCancel = () => {
+    captureState.cancel();
+    videoPlayer.setPlaying(true);
+  };
+
+  const handleSeek = (seconds: number) => {
+    playerRef.current?.seekTo(seconds);
+    setCurrentTime(seconds);
+  };
+
+  // Lets the annotator fine-tune the frozen moment from the Why screen: play
+  // or scrub to a better spot, then tap the "Move freeze to m:ss" tag that
+  // appears once they settle there.
+  const handleRepositionFreeze = (seconds: number) => {
+    captureState.setFrozenAt(seconds);
+  };
+
+  const handleSkip = (delta: number) => {
+    handleSeek(Math.max(0, Math.min(duration || Infinity, currentTime + delta)));
+  };
+
+  const showVideo = captureState.phase === "playing" || isCapturePhase;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+    <div
+      style={{
+        padding: "var(--side-padding)",
+        paddingTop: "var(--top-clearance)",
+        minHeight: "100vh",
+        position: "relative",
+        overflow: "hidden",
+        backgroundColor: showVideo ? "var(--ink)" : undefined,
+      }}
+    >
+      {isCapturePhase && <GradientOrbs />}
+
+      <div style={{ position: "relative" }}>
+        {showVideo && (
+          <>
+            {isCapturePhase ? (
+              <CaptureTopbar
+                frozenAt={captureState.frozenAt}
+                formatTime={videoPlayer.formatTime}
+                onCancel={handleCancel}
+              />
+            ) : captureState.phase === "playing" ? (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  marginBottom: "16px",
+                }}
+              >
+                <button
+                  onClick={() => {
+                    captureState.setSelectedVideo(null);
+                    captureState.setPhase("select");
+                  }}
+                  aria-label="Back to video selection"
+                  style={{
+                    width: "34px",
+                    height: "34px",
+                    borderRadius: "50%",
+                    border: "1px solid var(--hairline-light)",
+                    backgroundColor: "rgba(255, 255, 255, 0.08)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  <CloseIcon size={16} color="var(--on-dark)" />
+                </button>
+              </div>
+            ) : null}
+
+            <YouTubePlayer
+              ref={playerRef}
+              youtubeId={selectedVideoData.youtubeId}
+              playing={videoPlayer.playing}
+              frozenAt={captureState.frozenAt}
+              onFreeze={captureState.phase === "playing" ? handleFreeze : undefined}
+              onPlayStateChange={setVideoPlaying}
+              variant={captureState.phase === "why" ? "card" : "default"}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+
+            {isCapturePhase && captureState.frozenAt !== null && (
+              <ContextScrubber
+                frozenAt={captureState.frozenAt}
+                duration={duration}
+                value={currentTime}
+                onScrub={handleSeek}
+                playing={videoPlaying}
+                onRepositionFreeze={
+                  captureState.phase === "why" ? handleRepositionFreeze : undefined
+                }
+              />
+            )}
+          </>
+        )}
+
+        {captureState.phase === "playing" && (
+          <PlayingScreen
+            playing={videoPlayer.playing}
+            onPlayingChange={videoPlayer.setPlaying}
+            currentTime={currentTime}
+            duration={duration}
+            onSeek={handleSeek}
+            onSkip={handleSkip}
+            onSetPlaybackRate={(rate) => playerRef.current?.setPlaybackRate(rate)}
+            formatTime={videoPlayer.formatTime}
+          />
+        )}
+
+        {captureState.phase === "why" && (
+          <WhyScreen
+            whyMode={captureState.answers.whyMode}
+            whyText={captureState.answers.whyText}
+            transcript={captureState.answers.transcript}
+            onWhyModeChange={(mode) => captureState.updateAnswer("whyMode", mode)}
+            onWhyTextChange={(text) => captureState.updateAnswer("whyText", text)}
+            onTranscriptChange={(transcript) => captureState.updateAnswer("transcript", transcript)}
+            onNext={() => captureState.setPhase("q1")}
+          />
+        )}
+
+        {captureState.phase === "q1" && (
+          <QuestionScreen
+            questionIndex={0}
+            title="What kind of moment was it?"
+            options={OFFER_TYPES}
+            selectedValue={captureState.answers.offerType}
+            onSelect={(value) =>
+              captureState.updateAnswer(
+                "offerType",
+                value as typeof captureState.answers.offerType
+              )
+            }
+            onNext={() => captureState.setPhase("q2")}
+            onSkip={() => captureState.setPhase("q2")}
+          />
+        )}
+
+        {captureState.phase === "q2" && (
+          <QuestionScreen
+            questionIndex={1}
+            title="Was it surprising?"
+            options={YES_NO}
+            selectedValue={captureState.answers.surprising}
+            onSelect={(value) =>
+              captureState.updateAnswer(
+                "surprising",
+                value as typeof captureState.answers.surprising
+              )
+            }
+            onNext={() => captureState.setPhase("q3")}
+            onSkip={() => captureState.setPhase("q3")}
+          />
+        )}
+
+        {captureState.phase === "q3" && (
+          <QuestionScreen
+            questionIndex={2}
+            title="How did it end?"
+            options={ENDING_TYPES}
+            selectedValue={captureState.answers.endingType}
+            onSelect={(value) =>
+              captureState.updateAnswer(
+                "endingType",
+                value as typeof captureState.answers.endingType
+              )
+            }
+            onNext={() => captureState.setPhase("done")}
+            onSkip={() => captureState.setPhase("done")}
+          />
+        )}
+
+        {captureState.phase === "done" && captureState.frozenAt !== null && (
+          <DoneScreen
+            momentLabel={videoPlayer.formatTime(captureState.frozenAt)}
+            onBackToJogo={() => {
+              captureState.resetForNextMoment();
+              videoPlayer.setPlaying(true);
+            }}
+            onAnnotateNewVideo={() => {
+              captureState.setSelectedVideo(null);
+              captureState.setPhase("select");
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

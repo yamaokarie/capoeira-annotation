@@ -1,0 +1,171 @@
+CAPOEIRA JOGO ANNOTATION SCHEMA — MVP v2.0
+===========================================
+
+PURPOSE
+-------
+This schema captures moments in capoeira video that experts judge to be worth
+learning from. The goal is to build a dataset that helps students identify
+what makes a jogo dynamic, skillful, and worth studying — and later, to teach
+an AI what constitutes good capoeira.
+
+Each moment is marked by an expert with:
+  - Timestamp (when it happens)
+  - Free-form explanation (why it matters)
+  - Optional tags (what kind of moment it is)
+
+Over time, patterns in these expert judgments will reveal what we value in capoeira.
+Eventually, an AI trained on these annotations can flag similar moments in new videos.
+
+
+STRUCTURE
+---------
+VIDEO contains multiple MOMENTS.
+Each MOMENT contains:
+  - timestamp
+  - expert's free-form explanation
+  - optional tags (multi-select)
+
+
+VIDEO
+-----
+- url           : YouTube or Vimeo link
+- title         : display name (e.g., "Ferradura vs Gegê, Angola Style")
+- style         : angola | regional | contemporary
+- quality       : 1–5 (pedagogical usefulness for teaching)
+
+
+MOMENT (Quick Capture)
+----------------------
+- video_id      : links to the video
+- timestamp     : when the expert marked it (seconds)
+- marked_by     : name of the expert or mestre
+- why_text      : 2–3 sentences in the expert's voice — what does this moment
+                  reveal about the game? Not mechanics, but rhythm, intention,
+                  surprise, relationship. See writing guide below.
+- tags          : optional multi-select from the tag list (zero to many)
+- created_at    : auto-populated timestamp
+
+
+TAGS (Multi-Select)
+-------------------
+Experts can apply any combination of these tags to describe what the moment is:
+
+**Offer & Intent:**
+  invitation   — opening the body to provoke a response; an offer that is also a trap
+  threat       — declared possibility of attack, real or fake; forces response
+  redirection  — unexpected pivot; broke expectation or pattern
+  pressure     — closing space, limiting options, forcing reaction
+
+**Quality & Style:**
+  deceptive    — cunning, malícia; reading and outsmarting the other player
+  skillful     — clean, precise, well-timed execution
+  collaborative — playful, non-combative, mutual exploration
+  playful      — lightness, humor, ease; jogo became play
+
+Use as many tags as fit. A moment can be both "skillful" and "deceptive".
+
+
+WRITING why_text
+-----------------
+Keep it to 2–3 sentences. Don't describe the movements — that's not your job.
+Instead answer: What does this moment reveal about the game? What should
+a student understand about capoeira that they wouldn't notice on their own?
+
+Think in terms of:
+  - Rhythm: What changed about the flow of the game?
+  - Surprise: What didn't the other player expect?
+  - Relationship: What does this show about how the players read each other?
+  - Intention: What was each player trying to do or hide?
+
+**Good example:**
+"Ferradura opens the space with a hesitant cabeçada — enough to test Gegê's
+attention but not commit. Gegê reads it as a feint and holds her ground.
+This is malícia: not attacking, but reading whether the other player is
+truly engaged."
+
+**Bad example:**
+"Ferradura performs a cabeçada with incomplete extension, descending into
+a lower stance that creates an opening in the center line, which Gegê exploits
+by transitioning to jogo baixo with minimal upper body exposure."
+
+(The bad example uses sports-science language and describes mechanics, not meaning.)
+
+
+LANGUAGE GUIDE
+---------------
+Use capoeira vocabulary freely. Here are terms that work well:
+
+Movements (in Portuguese):
+  ginga, au, esquiva, negativa, rolê, rasteira, cabeçada, bananeira,
+  queda de rins, chizora, chamada, meia-lua, armada, martelo, benção,
+  chapa, parafuso, au sem mão
+
+Concepts:
+  jogo           — the game, the dialogue between two players
+  jogo baixo     — the low game, close to the floor
+  malícia        — cunning, deception, reading the other player
+  mandinga       — the magic and trickery in the game
+  volta do mundo — circling the roda; used to reset or catch a breath
+  roda           — the circle of players and musicians
+
+Avoid sports-science language:
+  DON'T use: "spatial limits", "traveling mass", "center line", "low plane",
+  "inverted", "tracking the torso", "defensive base", "neutralizing pressure",
+  "underpass", "execute", "transition"
+  
+  DO use: capoeira vocabulary and everyday language about rhythm, intention,
+  and relationship.
+
+
+ANNOTATION WORKFLOW
+-------------------
+PHASE 1 — CAPTURE
+
+Expert watches video on phone or desktop.
+Taps to freeze at a moment that catches their attention.
+Writes 2–3 sentences: why is this worth learning?
+Optionally picks tags that describe the moment.
+Taps "Save".
+
+→ Database fills with moments tagged by expert judgment.
+
+
+PHASE 2 — PATTERN FINDING (Later)
+
+After 20–30 moments are collected, read through the why_text entries.
+Look for recurring themes, pairs, or relationships.
+Use those patterns to inform future development.
+
+
+PHASE 3 — AI TRAINING (Even Later)
+
+AI reads all the moments + free-form explanations + tags.
+Learns what makes a moment worth flagging.
+When shown a new video, suggests timestamps + can draft explanations.
+Expert reviews and refines.
+
+
+DATA STORED IN AIRTABLE
+------------------------
+Table: Moments
+
+| Field | Type | Notes |
+|---|---|---|
+| id | UUID | Unique identifier |
+| video_id | Text | Links to video |
+| timestamp | Number | Seconds into video |
+| marked_by | Text | Expert name |
+| why_text | Long text | 2–3 sentence explanation |
+| tags | Array/Multiselect | invitation, threat, redirection, pressure, deceptive, skillful, collaborative, playful |
+| created_at | Timestamp | Auto-populated |
+
+
+KEY PRINCIPLE
+-------------
+The expert's judgment is the data. The free-form explanation is how we learn
+what capoeira looks like through expert eyes. The tags are signals for
+pattern-finding.
+
+Don't force experts into a fixed structure. Let them speak in their voice.
+Let patterns emerge from the data, not from a schema imposed before
+the data exists.
