@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { SelectVideoScreen } from "@/components/capture/SelectVideoScreen";
 import { PlayingScreen } from "@/components/capture/PlayingScreen";
 import { WhyScreen } from "@/components/capture/WhyScreen";
-import { QuestionScreen } from "@/components/capture/QuestionScreen";
+import { TagsScreen } from "@/components/capture/TagsScreen";
 import { DoneScreen } from "@/components/capture/DoneScreen";
 import { GradientOrbs } from "@/components/capture/GradientOrbs";
 import { ContextScrubber } from "@/components/capture/ContextScrubber";
@@ -14,7 +14,6 @@ import { CaptureTopbar } from "@/components/capture/CaptureTopbar";
 import { CloseIcon } from "@/components/ui/icons";
 import { useCaptureState } from "@/hooks/useCaptureState";
 import { useVideoPlayer } from "@/hooks/useVideoPlayer";
-import { OFFER_TYPES, ENDING_TYPES, YES_NO } from "@/lib/taxonomy";
 import type { Video } from "@/lib/types";
 
 export default function Home() {
@@ -31,11 +30,13 @@ export default function Home() {
   // `playing` prop otherwise) — drives the context scrubber during capture.
   const [videoPlaying, setVideoPlaying] = useState(false);
 
+  // "why" and "tags" are both the dark, orb-backed capture screens; "tags" is
+  // text-only (no video/timeline), so it's excluded from `showVideo` below.
   const isCapturePhase =
-    captureState.phase === "why" ||
-    captureState.phase === "q1" ||
-    captureState.phase === "q2" ||
-    captureState.phase === "q3";
+    captureState.phase === "why" || captureState.phase === "tags";
+  const showVideo =
+    captureState.phase === "playing" || captureState.phase === "why";
+  const showTopControls = captureState.phase === "playing" || isCapturePhase;
 
   useEffect(() => {
     fetch("/api/videos")
@@ -93,7 +94,7 @@ export default function Home() {
         videos={videos}
         loading={videosLoading}
         error={videosError}
-        onSelectVideo={(videoId) => {
+        onStartAnnotating={(videoId) => {
           captureState.setSelectedVideo(videoId);
           captureState.setPhase("playing");
         }}
@@ -135,23 +136,27 @@ export default function Home() {
     handleSeek(Math.max(0, Math.min(duration || Infinity, currentTime + delta)));
   };
 
-  const showVideo = captureState.phase === "playing" || isCapturePhase;
+  // Playing/Why keep the pre-grid side padding & top clearance so the video
+  // frame's on-screen size/position stays pixel-identical; Tags/Done (no
+  // video on screen) use the new grid values.
+  const sidePadding = showVideo ? "var(--side-padding-video)" : "var(--side-padding)";
+  const topClearance = showVideo ? "var(--top-clearance-video)" : "var(--top-clearance)";
 
   return (
     <div
       style={{
-        padding: "var(--side-padding)",
-        paddingTop: "var(--top-clearance)",
+        padding: sidePadding,
+        paddingTop: topClearance,
         minHeight: "100vh",
         position: "relative",
         overflow: "hidden",
-        backgroundColor: showVideo ? "var(--ink)" : undefined,
+        backgroundColor: showTopControls ? "var(--ink)" : undefined,
       }}
     >
       {isCapturePhase && <GradientOrbs />}
 
       <div style={{ position: "relative" }}>
-        {showVideo && (
+        {showTopControls && (
           <>
             {isCapturePhase ? (
               <CaptureTopbar
@@ -190,17 +195,19 @@ export default function Home() {
               </div>
             ) : null}
 
-            <YouTubePlayer
-              ref={playerRef}
-              youtubeId={selectedVideoData.youtubeId}
-              playing={videoPlayer.playing}
-              frozenAt={captureState.frozenAt}
-              onFreeze={captureState.phase === "playing" ? handleFreeze : undefined}
-              onPlayStateChange={setVideoPlaying}
-              variant={captureState.phase === "why" ? "card" : "default"}
-            />
+            {showVideo && (
+              <YouTubePlayer
+                ref={playerRef}
+                youtubeId={selectedVideoData.youtubeId}
+                playing={videoPlayer.playing}
+                frozenAt={captureState.frozenAt}
+                onFreeze={captureState.phase === "playing" ? handleFreeze : undefined}
+                onPlayStateChange={setVideoPlaying}
+                variant={captureState.phase === "why" ? "card" : "default"}
+              />
+            )}
 
-            {isCapturePhase && captureState.frozenAt !== null && (
+            {showVideo && captureState.frozenAt !== null && (
               <ContextScrubber
                 frozenAt={captureState.frozenAt}
                 duration={duration}
@@ -236,58 +243,25 @@ export default function Home() {
             onWhyModeChange={(mode) => captureState.updateAnswer("whyMode", mode)}
             onWhyTextChange={(text) => captureState.updateAnswer("whyText", text)}
             onTranscriptChange={(transcript) => captureState.updateAnswer("transcript", transcript)}
-            onNext={() => captureState.setPhase("q1")}
+            onBack={handleCancel}
+            onNext={() => captureState.setPhase("tags")}
           />
         )}
 
-        {captureState.phase === "q1" && (
-          <QuestionScreen
-            questionIndex={0}
-            title="What kind of moment was it?"
-            options={OFFER_TYPES}
-            selectedValue={captureState.answers.offerType}
-            onSelect={(value) =>
+        {captureState.phase === "tags" && (
+          <TagsScreen
+            selectedTags={captureState.answers.tags}
+            onToggleTag={(value) => {
+              const current = captureState.answers.tags;
               captureState.updateAnswer(
-                "offerType",
-                value as typeof captureState.answers.offerType
-              )
-            }
-            onNext={() => captureState.setPhase("q2")}
-            onSkip={() => captureState.setPhase("q2")}
-          />
-        )}
-
-        {captureState.phase === "q2" && (
-          <QuestionScreen
-            questionIndex={1}
-            title="Was it surprising?"
-            options={YES_NO}
-            selectedValue={captureState.answers.surprising}
-            onSelect={(value) =>
-              captureState.updateAnswer(
-                "surprising",
-                value as typeof captureState.answers.surprising
-              )
-            }
-            onNext={() => captureState.setPhase("q3")}
-            onSkip={() => captureState.setPhase("q3")}
-          />
-        )}
-
-        {captureState.phase === "q3" && (
-          <QuestionScreen
-            questionIndex={2}
-            title="How did it end?"
-            options={ENDING_TYPES}
-            selectedValue={captureState.answers.endingType}
-            onSelect={(value) =>
-              captureState.updateAnswer(
-                "endingType",
-                value as typeof captureState.answers.endingType
-              )
-            }
+                "tags",
+                current.includes(value)
+                  ? current.filter((t) => t !== value)
+                  : [...current, value]
+              );
+            }}
+            onBack={() => captureState.setPhase("why")}
             onNext={() => captureState.setPhase("done")}
-            onSkip={() => captureState.setPhase("done")}
           />
         )}
 

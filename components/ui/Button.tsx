@@ -13,7 +13,7 @@ export function PillButton({
       disabled={disabled}
       style={{
         width: "100%",
-        height: "50px",
+        height: "var(--height-button)",
         borderRadius: "var(--radius-pill)",
         backgroundColor: disabled ? "var(--soft)" : "var(--canvas)",
         color: "var(--ink)",
@@ -21,6 +21,10 @@ export function PillButton({
         fontWeight: 600,
         cursor: disabled ? "not-allowed" : "pointer",
         fontSize: "16px",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "8px",
       }}
     >
       {children}

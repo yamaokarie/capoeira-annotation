@@ -3,6 +3,11 @@ export interface Video {
   videoTitle: string;
   youtubeId: string;
   style?: "angola" | "regional" | "contemporary";
+  // Not yet returned by /api/videos — display-only, degrade gracefully when absent.
+  context?: string;
+  aspect?: string;
+  durationLabel?: string;
+  thumbnailUrl?: string;
 }
 
 export interface AnnotationRecord {
@@ -14,9 +19,7 @@ export interface AnnotationRecord {
   whyMode: "voice" | "text";
   transcript: string;
   whyText: string;
-  surprising?: "yes" | "no";
-  offerType?: "invitation" | "threat" | "redirection" | "pressure";
-  endingType?: "clean break" | "reset" | "takedown" | "laughter";
+  tags: string[];
   createdAt: string;
 }
 
@@ -24,7 +27,5 @@ export type CapturePhase =
   | "select"
   | "playing"
   | "why"
-  | "q1"
-  | "q2"
-  | "q3"
+  | "tags"
   | "done";

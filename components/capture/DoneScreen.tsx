@@ -45,7 +45,7 @@ export function DoneScreen({
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: "12px",
+          gap: "var(--gap-sm)",
           width: "100%",
         }}
       >
@@ -53,7 +53,7 @@ export function DoneScreen({
         <button
           onClick={onAnnotateNewVideo}
           style={{
-            height: "50px",
+            height: "var(--height-button)",
             borderRadius: "var(--radius-pill)",
             backgroundColor: "transparent",
             border: "1px solid var(--soft)",

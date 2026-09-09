@@ -239,8 +239,8 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       <div
         style={{
           position: "relative",
-          width: "calc(100% + 2 * var(--side-padding))",
-          marginLeft: "calc(-1 * var(--side-padding))",
+          width: "calc(100% + 2 * var(--side-padding-video))",
+          marginLeft: "calc(-1 * var(--side-padding-video))",
           marginTop: isCard ? "-16px" : undefined,
           paddingTop: isCard ? "34px" : 0,
           paddingBottom: isCard ? "34px" : 0,

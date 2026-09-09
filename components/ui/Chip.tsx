@@ -11,7 +11,7 @@ export function Chip({
     <button
       onClick={onClick}
       style={{
-        height: "40px",
+        height: "var(--height-chip)",
         borderRadius: "var(--radius-pill)",
         backgroundColor: selected ? "var(--cream)" : "transparent",
         color: selected ? "var(--ink)" : "var(--on-dark)",

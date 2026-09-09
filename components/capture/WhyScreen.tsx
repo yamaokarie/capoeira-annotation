@@ -20,6 +20,7 @@ interface WhyScreenProps {
   onWhyModeChange: (mode: WhyMode) => void;
   onWhyTextChange: (text: string) => void;
   onTranscriptChange: (transcript: string) => void;
+  onBack: () => void;
   onNext: () => void;
 }
 
@@ -34,6 +35,7 @@ export function WhyScreen({
   onWhyModeChange,
   onWhyTextChange,
   onTranscriptChange,
+  onBack,
   onNext,
 }: WhyScreenProps) {
   const [recState, setRecState] = useState<RecState>(transcript ? "done" : "idle");
@@ -72,7 +74,7 @@ export function WhyScreen({
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      <div style={{ marginBottom: "24px" }}>
+      <div style={{ marginBottom: "var(--gap-lg)" }}>
         <div
           style={{
             fontSize: "12px",
@@ -335,10 +337,32 @@ export function WhyScreen({
         </div>
       )}
 
-      <div style={{ marginTop: "22px" }}>
-        <PillButton onClick={onNext} disabled={!canContinue}>
-          Continue <ArrowIcon size={17} color="#0c0a09" />
-        </PillButton>
+      <div style={{ marginTop: "var(--gap-lg)", display: "flex", gap: "var(--gap-sm)" }}>
+        <button
+          onClick={onBack}
+          aria-label="Back to playing"
+          style={{
+            width: "var(--height-circular)",
+            height: "var(--height-circular)",
+            flex: "0 0 auto",
+            borderRadius: "var(--radius-pill)",
+            backgroundColor: "transparent",
+            border: "1px solid var(--hairline-strong)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+          }}
+        >
+          <span style={{ display: "inline-flex", transform: "rotate(180deg)" }}>
+            <ArrowIcon size={17} color="var(--on-dark)" />
+          </span>
+        </button>
+        <div style={{ flex: 1 }}>
+          <PillButton onClick={onNext} disabled={!canContinue}>
+            Continue <ArrowIcon size={17} color="#0c0a09" />
+          </PillButton>
+        </div>
       </div>
     </div>
   );

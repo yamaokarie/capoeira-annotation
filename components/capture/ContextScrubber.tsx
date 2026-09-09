@@ -46,8 +46,8 @@ export function ContextScrubber({
     <div
       style={{
         position: "relative",
-        width: "calc(100% + 2 * var(--side-padding))",
-        marginLeft: "calc(-1 * var(--side-padding))",
+        width: "calc(100% + 2 * var(--side-padding-video))",
+        marginLeft: "calc(-1 * var(--side-padding-video))",
         padding: "0 12px",
         marginBottom: "16px",
       }}

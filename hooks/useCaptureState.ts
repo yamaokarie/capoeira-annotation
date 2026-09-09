@@ -1,25 +1,18 @@
 import { useEffect, useState } from "react";
 import type { CapturePhase } from "@/lib/types";
 
-type OfferType = "invitation" | "threat" | "redirection" | "pressure";
-type EndingType = "clean break" | "reset" | "takedown" | "laughter";
-
 interface Answers {
   whyMode: "voice" | "text";
   transcript: string;
   whyText: string;
-  surprising: "yes" | "no" | undefined;
-  offerType: OfferType | undefined;
-  endingType: EndingType | undefined;
+  tags: string[];
 }
 
 const initialAnswers: Answers = {
   whyMode: "voice",
   transcript: "",
   whyText: "",
-  surprising: undefined,
-  offerType: undefined,
-  endingType: undefined,
+  tags: [],
 };
 
 export function useCaptureState() {

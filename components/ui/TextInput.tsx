@@ -15,6 +15,7 @@ export function TextInput({
       onChange={(e) => onChange(e.target.value)}
       style={{
         width: "100%",
+        minHeight: "var(--height-input)",
         padding: "12px 16px",
         borderRadius: "8px",
         border: "1px solid var(--soft)",
