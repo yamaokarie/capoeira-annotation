@@ -23,6 +23,7 @@ export function SurprisingScreen({
           fontSize: "24px",
           fontFamily: "var(--font-display)",
           color: "var(--on-dark)",
+          marginTop: "16px",
           marginBottom: "var(--gap-lg)",
         }}
       >

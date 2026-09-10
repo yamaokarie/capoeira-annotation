@@ -23,6 +23,7 @@ export function TagsScreen({ selectedTags, onToggleTag, onBack, onNext }: TagsSc
           fontSize: "24px",
           fontFamily: "var(--font-display)",
           color: "var(--on-dark)",
+          marginTop: "16px",
           marginBottom: "var(--gap-lg)",
         }}
       >
