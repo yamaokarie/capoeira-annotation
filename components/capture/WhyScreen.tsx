@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { PillButton } from "@/components/ui/Button";
 import { Waveform } from "@/components/ui/Waveform";
-import { ArrowIcon, KbdIcon, MicIcon, PlayIcon, RedoIcon } from "@/components/ui/icons";
+import { ArrowIcon, KbdIcon, MicIcon, PauseIcon, PlayIcon, RedoIcon } from "@/components/ui/icons";
 
-// Placeholder-only, per design.md: no real audio capture or transcription in
-// this build — mic/waveform is simulated, transcript is a fixed sample string.
-const SAMPLE_TRANSCRIPT =
-  "Cooperative parallel play, then Gegê drops into a chizora — an unfinished attack from the floor. The shift from non-engaging to engaging is the heartbeat of the game.";
+const MIME_CANDIDATES = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
+
+function pickMimeType(): string | undefined {
+  if (typeof MediaRecorder === "undefined") return undefined;
+  return MIME_CANDIDATES.find((type) => MediaRecorder.isTypeSupported(type));
+}
 
 type WhyMode = "voice" | "text";
 type RecState = "idle" | "rec" | "done";
@@ -20,6 +22,7 @@ interface WhyScreenProps {
   onWhyModeChange: (mode: WhyMode) => void;
   onWhyTextChange: (text: string) => void;
   onTranscriptChange: (transcript: string) => void;
+  onAudioRecorded: (blob: Blob | null) => void;
   onBack: () => void;
   onNext: () => void;
 }
@@ -35,42 +38,116 @@ export function WhyScreen({
   onWhyModeChange,
   onWhyTextChange,
   onTranscriptChange,
+  onAudioRecorded,
   onBack,
   onNext,
 }: WhyScreenProps) {
   const [recState, setRecState] = useState<RecState>(transcript ? "done" : "idle");
   const [dur, setDur] = useState(0);
   const [transcribing, setTranscribing] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
+  const [transcribeError, setTranscribeError] = useState<string | null>(null);
+  const [playing, setPlaying] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mediaRecorder = useRef<MediaRecorder | null>(null);
+  const chunks = useRef<Blob[]>([]);
+  const recordedBlob = useRef<Blob | null>(null);
+  const objectUrl = useRef<string | null>(null);
+  const audioEl = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => () => {
     if (timer.current) clearInterval(timer.current);
+    if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
   }, []);
 
-  const startRec = () => {
-    setRecState("rec");
-    setDur(0);
-    onTranscriptChange("");
-    timer.current = setInterval(() => setDur((d) => d + 1), 1000);
+  const transcribe = async (blob: Blob) => {
+    setTranscribing(true);
+    setTranscribeError(null);
+    try {
+      const formData = new FormData();
+      formData.append("audio", blob, "recording.webm");
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to transcribe");
+      onTranscriptChange(data.text || "");
+    } catch {
+      setTranscribeError("Couldn't transcribe — try again, or type instead.");
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
+  const startRec = async () => {
+    setMicError(null);
+    setTranscribeError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = pickMimeType();
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      chunks.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const blob = new Blob(chunks.current, { type: mimeType || "audio/webm" });
+        recordedBlob.current = blob;
+        onAudioRecorded(blob);
+        transcribe(blob);
+      };
+      mediaRecorder.current = recorder;
+      recorder.start();
+      setRecState("rec");
+      setDur(0);
+      onTranscriptChange("");
+      timer.current = setInterval(() => setDur((d) => d + 1), 1000);
+    } catch {
+      setMicError("Couldn't access the microphone — check permissions, or type instead.");
+    }
   };
 
   const stopRec = () => {
     if (timer.current) clearInterval(timer.current);
     setRecState("done");
-    setTranscribing(true);
-    setTimeout(() => {
-      setTranscribing(false);
-      onTranscriptChange(SAMPLE_TRANSCRIPT);
-    }, 1100);
+    mediaRecorder.current?.stop();
   };
 
   const reRec = () => {
     setRecState("idle");
     setDur(0);
+    setPlaying(false);
     onTranscriptChange("");
+    recordedBlob.current = null;
+    onAudioRecorded(null);
+    if (objectUrl.current) {
+      URL.revokeObjectURL(objectUrl.current);
+      objectUrl.current = null;
+    }
   };
 
-  const canContinue = whyMode === "voice" ? recState === "done" : whyText.trim().length > 0;
+  const togglePlayback = () => {
+    if (!recordedBlob.current) return;
+    if (!audioEl.current) {
+      objectUrl.current = URL.createObjectURL(recordedBlob.current);
+      audioEl.current = new Audio(objectUrl.current);
+      audioEl.current.onended = () => setPlaying(false);
+    }
+    if (playing) {
+      audioEl.current.pause();
+      setPlaying(false);
+    } else {
+      audioEl.current.play();
+      setPlaying(true);
+    }
+  };
+
+  const canContinue =
+    whyMode === "voice"
+      ? recState === "done" && !transcribing && !transcribeError && transcript.trim().length > 0
+      : whyText.trim().length > 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -177,6 +254,20 @@ export function WhyScreen({
                 )}
               </div>
 
+              {micError && (
+                <p
+                  style={{
+                    color: "#e2483d",
+                    fontSize: "13px",
+                    textAlign: "center",
+                    margin: 0,
+                    maxWidth: "26ch",
+                  }}
+                >
+                  {micError}
+                </p>
+              )}
+
               <Waveform active={recState === "rec"} height={48} />
 
               <button
@@ -214,7 +305,8 @@ export function WhyScreen({
                 }}
               >
                 <button
-                  aria-label="Play recording"
+                  onClick={togglePlayback}
+                  aria-label={playing ? "Pause recording" : "Play recording"}
                   style={{
                     width: "34px",
                     height: "34px",
@@ -226,10 +318,14 @@ export function WhyScreen({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    paddingLeft: "2px",
+                    paddingLeft: playing ? 0 : "2px",
                   }}
                 >
-                  <PlayIcon size={16} color="#0c0a09" />
+                  {playing ? (
+                    <PauseIcon size={16} color="#0c0a09" />
+                  ) : (
+                    <PlayIcon size={16} color="#0c0a09" />
+                  )}
                 </button>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <Waveform
@@ -248,7 +344,7 @@ export function WhyScreen({
                     flex: "0 0 auto",
                   }}
                 >
-                  {mmss(dur || 8)}
+                  {mmss(dur)}
                 </span>
                 <button
                   onClick={reRec}
@@ -288,8 +384,33 @@ export function WhyScreen({
                   >
                     Transcribing…
                   </span>
+                ) : transcribeError ? (
+                  <span
+                    style={{
+                      color: "#e2483d",
+                      fontStyle: "normal",
+                      fontFamily: "var(--font-body)",
+                      fontSize: "14px",
+                    }}
+                  >
+                    {transcribeError}{" "}
+                    <button
+                      onClick={() => recordedBlob.current && transcribe(recordedBlob.current)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "var(--on-dark)",
+                        textDecoration: "underline",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        padding: 0,
+                      }}
+                    >
+                      Try again
+                    </button>
+                  </span>
                 ) : (
-                  <span>“{transcript || SAMPLE_TRANSCRIPT}”</span>
+                  <span>“{transcript}”</span>
                 )}
               </div>
             </div>

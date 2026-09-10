@@ -10,6 +10,8 @@ interface EndingScreenProps {
   onEndingTypeChange: (value: string) => void;
   onBack: () => void;
   onSave: () => void;
+  saving?: boolean;
+  saveError?: string | null;
 }
 
 export function EndingScreen({
@@ -17,6 +19,8 @@ export function EndingScreen({
   onEndingTypeChange,
   onBack,
   onSave,
+  saving = false,
+  saveError = null,
 }: EndingScreenProps) {
   const [lastTapped, setLastTapped] = useState<string | null>(null);
   const activeDefinition = ENDING_TYPES.find((ending) => ending.value === lastTapped)?.definition;
@@ -28,6 +32,7 @@ export function EndingScreen({
           fontSize: "24px",
           fontFamily: "var(--font-display)",
           color: "var(--on-dark)",
+          marginTop: "16px",
           marginBottom: "var(--gap-lg)",
         }}
       >
@@ -69,6 +74,19 @@ export function EndingScreen({
         {activeDefinition ?? "Pick the one that fits best — or none"}
       </p>
 
+      {saveError && (
+        <p
+          style={{
+            fontSize: "14px",
+            color: "var(--error, #e2483d)",
+            marginTop: 0,
+            marginBottom: "var(--gap-md)",
+          }}
+        >
+          {saveError}
+        </p>
+      )}
+
       <CaptureFooter>
         <button
           onClick={onBack}
@@ -91,8 +109,9 @@ export function EndingScreen({
           </span>
         </button>
         <div style={{ flex: 1 }}>
-          <PillButton onClick={onSave}>
-            Save <ArrowIcon size={17} color="#0c0a09" />
+          <PillButton onClick={onSave} disabled={saving}>
+            {saving ? "Saving…" : "Save"}
+            {!saving && <ArrowIcon size={17} color="#0c0a09" />}
           </PillButton>
         </div>
       </CaptureFooter>

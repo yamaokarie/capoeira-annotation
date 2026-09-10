@@ -27,6 +27,11 @@ export default function Home() {
   const [videosError, setVideosError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  // Held outside useCaptureState because it's a Blob, not JSON-serializable
+  // (useCaptureState persists its state to localStorage on every change).
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   // Reflects YouTube's actual play state, including playback resumed via
   // the iframe's own native center button while frozen (invisible to our
   // `playing` prop otherwise) — drives the context scrubber during capture.
@@ -124,6 +129,8 @@ export default function Home() {
   const handleCancel = () => {
     captureState.cancel();
     videoPlayer.setPlaying(true);
+    setSaveError(null);
+    setAudioBlob(null);
   };
 
   const handleSeek = (seconds: number) => {
@@ -140,6 +147,56 @@ export default function Home() {
 
   const handleSkip = (delta: number) => {
     handleSeek(Math.max(0, Math.min(duration || Infinity, currentTime + delta)));
+  };
+
+  const handleSaveMoment = async () => {
+    if (captureState.frozenAt === null) return;
+    setSaving(true);
+    setSaveError(null);
+    const { whyMode, whyText, transcript, tags, surprising, endingType } =
+      captureState.answers;
+    try {
+      const response = await fetch("/api/moments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          videoId: captureState.selectedVideo,
+          videoTitle: selectedVideoData?.videoTitle,
+          momentTimestamp: captureState.frozenAt,
+          momentLabel: videoPlayer.formatTime(captureState.frozenAt),
+          annotatorName: captureState.annotatorName,
+          whyMode,
+          transcript,
+          whyText,
+          tags,
+          surprising,
+          endingType,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to save annotation");
+      }
+
+      if (audioBlob && data.moment?.id) {
+        try {
+          const audioForm = new FormData();
+          audioForm.append("audio", audioBlob, "recording.webm");
+          await fetch(`/api/moments/${data.moment.id}/audio`, {
+            method: "POST",
+            body: audioForm,
+          });
+        } catch (audioError) {
+          console.error("Attach audio error:", audioError);
+        }
+      }
+
+      captureState.setPhase("done");
+    } catch {
+      setSaveError("Couldn't save — check your connection and try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Playing/Why keep the pre-grid side padding & top clearance so the video
@@ -249,6 +306,7 @@ export default function Home() {
             onWhyModeChange={(mode) => captureState.updateAnswer("whyMode", mode)}
             onWhyTextChange={(text) => captureState.updateAnswer("whyText", text)}
             onTranscriptChange={(transcript) => captureState.updateAnswer("transcript", transcript)}
+            onAudioRecorded={setAudioBlob}
             onBack={handleCancel}
             onNext={() => captureState.setPhase("surprising")}
           />
@@ -285,7 +343,9 @@ export default function Home() {
             endingType={captureState.answers.endingType}
             onEndingTypeChange={(value) => captureState.updateAnswer("endingType", value)}
             onBack={() => captureState.setPhase("tags")}
-            onSave={() => captureState.setPhase("done")}
+            onSave={handleSaveMoment}
+            saving={saving}
+            saveError={saveError}
           />
         )}
 
@@ -295,10 +355,12 @@ export default function Home() {
             onBackToJogo={() => {
               captureState.resetForNextMoment();
               videoPlayer.setPlaying(true);
+              setAudioBlob(null);
             }}
             onAnnotateNewVideo={() => {
               captureState.setSelectedVideo(null);
               captureState.setPhase("select");
+              setAudioBlob(null);
             }}
           />
         )}
