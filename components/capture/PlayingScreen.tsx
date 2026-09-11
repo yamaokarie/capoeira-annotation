@@ -30,6 +30,7 @@ export function PlayingScreen({
 }: PlayingScreenProps) {
   const pct = duration ? Math.min(100, (currentTime / duration) * 100) : 0;
   const [speedIndex, setSpeedIndex] = useState(0);
+  const [dragging, setDragging] = useState(false);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "18px" }}>
@@ -138,15 +139,17 @@ export function PlayingScreen({
         </span>
         <input
           type="range"
-          className="scrub-input"
+          className={dragging ? "scrub-input is-dragging" : "scrub-input"}
           min={0}
           max={duration || 1}
           step={0.1}
           value={Math.min(currentTime, duration || 1)}
           onChange={(e) => onSeek(Number(e.target.value))}
+          onPointerDown={() => setDragging(true)}
+          onPointerUp={() => setDragging(false)}
           style={{
             flex: 1,
-            background: `linear-gradient(to right, #fff ${pct}%, rgba(255,255,255,0.32) ${pct}%)`,
+            backgroundImage: `linear-gradient(to right, #fff ${pct}%, rgba(255,255,255,0.32) ${pct}%)`,
           }}
         />
         <span style={{ color: "var(--on-dark-soft)", fontSize: "12px", fontVariantNumeric: "tabular-nums" }}>

@@ -21,6 +21,7 @@ export function GradientOrbs() {
       {ORBS.map((orb, i) => (
         <div
           key={i}
+          className="gradient-orb"
           style={{
             position: "absolute",
             top: "top" in orb ? orb.top : undefined,

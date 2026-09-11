@@ -9,6 +9,7 @@ export function TextInput({
 }) {
   return (
     <input
+      className="text-input"
       type="text"
       placeholder={placeholder}
       value={value}

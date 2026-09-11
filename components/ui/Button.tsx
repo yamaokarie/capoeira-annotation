@@ -9,6 +9,7 @@ export function PillButton({
 }) {
   return (
     <button
+      className="pill-button"
       onClick={onClick}
       disabled={disabled}
       style={{

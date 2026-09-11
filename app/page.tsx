@@ -48,6 +48,11 @@ export default function Home() {
   const showVideo =
     captureState.phase === "playing" || captureState.phase === "why";
   const showTopControls = captureState.phase === "playing" || isCapturePhase;
+  // Done gets the same dark background as Playing/why/surprising/tags/ending
+  // above, but no CaptureTopbar/video (so it's kept out of isCapturePhase).
+  const showDarkBackground = showTopControls || captureState.phase === "done";
+  // Orbs stay off Playing (unchanged from before) but extend to Done.
+  const showOrbs = isCapturePhase || captureState.phase === "done";
 
   useEffect(() => {
     fetch("/api/videos")
@@ -199,11 +204,17 @@ export default function Home() {
     }
   };
 
-  // Playing/Why keep the pre-grid side padding & top clearance so the video
-  // frame's on-screen size/position stays pixel-identical; Tags/Done (no
-  // video on screen) use the new grid values.
+  // Playing/Why keep the pre-grid side padding so the video frame's on-screen
+  // width stays pixel-identical; Tags/Done (no video on screen) use the new
+  // grid values. Why's top clearance is pulled up from Playing's (84px) to
+  // 32px so the typed-input fallback isn't pushed below the fold.
   const sidePadding = showVideo ? "var(--side-padding-video)" : "var(--side-padding)";
-  const topClearance = showVideo ? "var(--top-clearance-video)" : "var(--top-clearance)";
+  const topClearance =
+    captureState.phase === "why"
+      ? "var(--top-clearance-why)"
+      : showVideo
+        ? "var(--top-clearance-video)"
+        : "var(--top-clearance)";
 
   return (
     <div
@@ -213,10 +224,10 @@ export default function Home() {
         minHeight: "100vh",
         position: "relative",
         overflow: "hidden",
-        backgroundColor: showTopControls ? "var(--ink)" : undefined,
+        backgroundColor: showDarkBackground ? "var(--ink)" : undefined,
       }}
     >
-      {isCapturePhase && <GradientOrbs />}
+      {showOrbs && <GradientOrbs />}
 
       <div style={{ position: "relative" }}>
         {showTopControls && (
@@ -236,6 +247,7 @@ export default function Home() {
                 }}
               >
                 <button
+                  className="icon-btn"
                   onClick={() => {
                     captureState.setSelectedVideo(null);
                     captureState.setPhase("select");
@@ -286,83 +298,96 @@ export default function Home() {
         )}
 
         {captureState.phase === "playing" && (
-          <PlayingScreen
-            playing={videoPlayer.playing}
-            onPlayingChange={videoPlayer.setPlaying}
-            currentTime={currentTime}
-            duration={duration}
-            onSeek={handleSeek}
-            onSkip={handleSkip}
-            onSetPlaybackRate={(rate) => playerRef.current?.setPlaybackRate(rate)}
-            formatTime={videoPlayer.formatTime}
-          />
+          <div key={captureState.phase} className="screen-enter">
+            <PlayingScreen
+              playing={videoPlayer.playing}
+              onPlayingChange={videoPlayer.setPlaying}
+              currentTime={currentTime}
+              duration={duration}
+              onSeek={handleSeek}
+              onSkip={handleSkip}
+              onSetPlaybackRate={(rate) => playerRef.current?.setPlaybackRate(rate)}
+              formatTime={videoPlayer.formatTime}
+            />
+          </div>
         )}
 
         {captureState.phase === "why" && (
-          <WhyScreen
-            whyMode={captureState.answers.whyMode}
-            whyText={captureState.answers.whyText}
-            transcript={captureState.answers.transcript}
-            onWhyModeChange={(mode) => captureState.updateAnswer("whyMode", mode)}
-            onWhyTextChange={(text) => captureState.updateAnswer("whyText", text)}
-            onTranscriptChange={(transcript) => captureState.updateAnswer("transcript", transcript)}
-            onAudioRecorded={setAudioBlob}
-            onBack={handleCancel}
-            onNext={() => captureState.setPhase("surprising")}
-          />
+          <div key={captureState.phase} className="screen-enter">
+            <WhyScreen
+              whyMode={captureState.answers.whyMode}
+              whyText={captureState.answers.whyText}
+              transcript={captureState.answers.transcript}
+              onWhyModeChange={(mode) => captureState.updateAnswer("whyMode", mode)}
+              onWhyTextChange={(text) => captureState.updateAnswer("whyText", text)}
+              onTranscriptChange={(transcript) => captureState.updateAnswer("transcript", transcript)}
+              onAudioRecorded={setAudioBlob}
+              onBack={handleCancel}
+              onNext={() => captureState.setPhase("surprising")}
+            />
+          </div>
         )}
 
         {captureState.phase === "surprising" && (
-          <SurprisingScreen
-            surprising={captureState.answers.surprising}
-            onSurprisingChange={(value) => captureState.updateAnswer("surprising", value)}
-            onBack={() => captureState.setPhase("why")}
-            onNext={() => captureState.setPhase("tags")}
-          />
+          <div key={captureState.phase} className="screen-enter">
+            <SurprisingScreen
+              surprising={captureState.answers.surprising}
+              onSurprisingChange={(value) => captureState.updateAnswer("surprising", value)}
+              onBack={() => captureState.setPhase("why")}
+              onNext={() => captureState.setPhase("tags")}
+            />
+          </div>
         )}
 
         {captureState.phase === "tags" && (
-          <TagsScreen
-            selectedTags={captureState.answers.tags}
-            onToggleTag={(value) => {
-              const current = captureState.answers.tags;
-              captureState.updateAnswer(
-                "tags",
-                current.includes(value)
-                  ? current.filter((t) => t !== value)
-                  : [...current, value]
-              );
-            }}
-            onBack={() => captureState.setPhase("surprising")}
-            onNext={() => captureState.setPhase("ending")}
-          />
+          <div key={captureState.phase} className="screen-enter">
+            <TagsScreen
+              selectedTags={captureState.answers.tags}
+              onToggleTag={(value) => {
+                const current = captureState.answers.tags;
+                captureState.updateAnswer(
+                  "tags",
+                  current.includes(value)
+                    ? current.filter((t) => t !== value)
+                    : [...current, value]
+                );
+              }}
+              onBack={() => captureState.setPhase("surprising")}
+              onNext={() => captureState.setPhase("ending")}
+            />
+          </div>
         )}
 
         {captureState.phase === "ending" && (
-          <EndingScreen
-            endingType={captureState.answers.endingType}
-            onEndingTypeChange={(value) => captureState.updateAnswer("endingType", value)}
-            onBack={() => captureState.setPhase("tags")}
-            onSave={handleSaveMoment}
-            saving={saving}
-            saveError={saveError}
-          />
+          <div key={captureState.phase} className="screen-enter">
+            <EndingScreen
+              endingType={captureState.answers.endingType}
+              onEndingTypeChange={(value) => captureState.updateAnswer("endingType", value)}
+              onBack={() => captureState.setPhase("tags")}
+              onSave={handleSaveMoment}
+              saving={saving}
+              saveError={saveError}
+            />
+          </div>
         )}
 
         {captureState.phase === "done" && captureState.frozenAt !== null && (
-          <DoneScreen
-            momentLabel={videoPlayer.formatTime(captureState.frozenAt)}
-            onBackToJogo={() => {
-              captureState.resetForNextMoment();
-              videoPlayer.setPlaying(true);
-              setAudioBlob(null);
-            }}
-            onAnnotateNewVideo={() => {
-              captureState.setSelectedVideo(null);
-              captureState.setPhase("select");
-              setAudioBlob(null);
-            }}
-          />
+          <div key={captureState.phase} className="screen-enter">
+            <DoneScreen
+              phase={captureState.phase}
+              momentLabel={videoPlayer.formatTime(captureState.frozenAt)}
+              onBackToJogo={() => {
+                captureState.resetForNextMoment();
+                videoPlayer.setPlaying(true);
+                setAudioBlob(null);
+              }}
+              onAnnotateNewVideo={() => {
+                captureState.setSelectedVideo(null);
+                captureState.setPhase("select");
+                setAudioBlob(null);
+              }}
+            />
+          </div>
         )}
       </div>
     </div>

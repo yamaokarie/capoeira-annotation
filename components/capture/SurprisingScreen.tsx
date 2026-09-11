@@ -44,6 +44,7 @@ export function SurprisingScreen({
 
       <CaptureFooter>
         <button
+          className="icon-btn"
           onClick={onBack}
           aria-label="Back to why screen"
           style={{

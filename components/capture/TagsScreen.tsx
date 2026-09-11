@@ -52,6 +52,8 @@ export function TagsScreen({ selectedTags, onToggleTag, onBack, onNext }: TagsSc
       </div>
 
       <p
+        key={activeDefinition ?? "default"}
+        className="caption-fade"
         style={{
           fontFamily: "var(--font-serif-italic)",
           fontStyle: "italic",
@@ -67,6 +69,7 @@ export function TagsScreen({ selectedTags, onToggleTag, onBack, onNext }: TagsSc
 
       <CaptureFooter>
         <button
+          className="icon-btn"
           onClick={onBack}
           aria-label="Back to why screen"
           style={{

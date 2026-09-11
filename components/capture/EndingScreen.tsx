@@ -61,6 +61,8 @@ export function EndingScreen({
       </div>
 
       <p
+        key={activeDefinition ?? "default"}
+        className="caption-fade"
         style={{
           fontFamily: "var(--font-serif-italic)",
           fontStyle: "italic",
@@ -89,6 +91,7 @@ export function EndingScreen({
 
       <CaptureFooter>
         <button
+          className="icon-btn"
           onClick={onBack}
           aria-label="Back to tags screen"
           style={{

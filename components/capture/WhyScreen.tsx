@@ -191,8 +191,12 @@ export function WhyScreen({
           }}
         >
           {recState !== "done" && (
-            <>
+            <div
+              className="screen-enter"
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "18px" }}
+            >
               <button
+                className="icon-btn"
                 onClick={recState === "rec" ? stopRec : startRec}
                 aria-label={recState === "rec" ? "Stop recording" : "Start recording"}
                 style={{
@@ -228,6 +232,7 @@ export function WhyScreen({
                 {recState === "rec" ? (
                   <>
                     <span
+                      className="rec-dot"
                       style={{
                         width: "9px",
                         height: "9px",
@@ -287,11 +292,14 @@ export function WhyScreen({
               >
                 <KbdIcon size={16} /> Type instead
               </button>
-            </>
+            </div>
           )}
 
           {recState === "done" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
+            <div
+              className="screen-enter"
+              style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}
+            >
               <div
                 style={{
                   display: "flex",
@@ -305,6 +313,7 @@ export function WhyScreen({
                 }}
               >
                 <button
+                  className="icon-btn"
                   onClick={togglePlayback}
                   aria-label={playing ? "Pause recording" : "Play recording"}
                   style={{
@@ -347,6 +356,7 @@ export function WhyScreen({
                   {mmss(dur)}
                 </span>
                 <button
+                  className="icon-btn"
                   onClick={reRec}
                   aria-label="Re-record"
                   style={{
@@ -460,6 +470,7 @@ export function WhyScreen({
 
       <div style={{ marginTop: "var(--gap-lg)", display: "flex", gap: "var(--gap-sm)" }}>
         <button
+          className="icon-btn"
           onClick={onBack}
           aria-label="Back to playing"
           style={{

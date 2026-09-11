@@ -54,6 +54,7 @@ export function ContextScrubber({
     >
       <input
         type="range"
+        className={dragging ? "context-scrub-input is-dragging" : "context-scrub-input"}
         min={0}
         max={max}
         step={0.1}
@@ -61,15 +62,12 @@ export function ContextScrubber({
         onChange={(e) => onScrub(Number(e.target.value))}
         onPointerDown={() => setDragging(true)}
         onPointerUp={() => setDragging(false)}
-        style={{
-          width: "100%",
-          display: "block",
-          accentColor: "var(--soft)",
-        }}
+        style={{ display: "block" }}
         aria-label="Scrub surrounding context"
       />
       {showReposition && (
         <button
+          className="reposition-tag"
           onClick={() => onRepositionFreeze?.(value)}
           style={{
             position: "absolute",
@@ -109,6 +107,7 @@ export function ContextScrubber({
         }}
       >
         <span
+          className="context-dot-pulse"
           style={{
             position: "absolute",
             inset: "-6px",

@@ -9,6 +9,7 @@ export function Chip({
 }) {
   return (
     <button
+      className="chip"
       onClick={onClick}
       style={{
         width: "100%",

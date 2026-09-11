@@ -10,6 +10,7 @@
   --on-dark: #ffffff;
   --on-dark-soft: #a8a29e;
   --soft: #a8a29e;
+  --accent: #ebc14b;
   --hairline-light: rgba(255, 255, 255, 0.16);
   --hairline-strong: rgba(255, 255, 255, 0.3);
 
@@ -35,6 +36,7 @@
   --top-clearance: 88px;
   --side-padding-video: 26px;
   --top-clearance-video: 84px;
+  --top-clearance-why: 32px;
   --radius-phone: 34px;
   --radius-pill: 9999px;
 
@@ -140,24 +142,149 @@ body {
   }
 }
 
+/* Phase-to-phase enter, used by app/page.tsx (key changes per capture
+   phase so each mount replays it). A one-shot sequence, not a toggleable
+   state, so it's a keyframe animation rather than a transition. */
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.screen-enter {
+  animation: screen-in 220ms cubic-bezier(0.165, 0.84, 0.44, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .ping-ring::after,
-  .mic-pulse {
+  .ping-ring-pulse,
+  .mic-pulse,
+  .svs-name-caret,
+  .svs-orb,
+  .gradient-orb,
+  .context-dot-pulse,
+  .rec-dot,
+  .reposition-tag,
+  .screen-enter {
     animation: none !important;
   }
 }
 
+/* Shared press/hover feedback for PillButton and Chip — see
+   .claude/skills/emil-animations. transform-only, CSS transitions (not
+   keyframes) since these are interruptible interactive states. */
+.pill-button,
+.chip {
+  transition: transform 150ms ease-out;
+}
+.pill-button:active:not(:disabled),
+.chip:active {
+  transform: scale(0.96);
+}
+.chip {
+  transition: transform 150ms ease-out, background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .pill-button:hover:not(:disabled) {
+    opacity: 0.92;
+  }
+  .pill-button {
+    transition: transform 150ms ease-out, opacity 150ms ease-out;
+  }
+}
+
+.text-input {
+  transition: border-color 150ms ease;
+}
+.text-input:focus {
+  border-color: var(--ink);
+  outline: none;
+}
+
+/* Shared press/hover feedback for icon-only circular controls (back,
+   cancel, mute, record, playback-toggle buttons) across CaptureTopbar,
+   WhyScreen, SurprisingScreen, TagsScreen, EndingScreen, YouTubePlayer,
+   and page.tsx. Also covers WhyScreen's mic button, whose background
+   swaps color on record state — the transition here is what makes that
+   swap smooth instead of an instant cut. */
+.icon-btn {
+  transition: transform 150ms ease-out, background-color 200ms ease, opacity 150ms ease-out;
+}
+.icon-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+@media (hover: hover) and (pointer: fine) {
+  .icon-btn:hover:not(:disabled) {
+    opacity: 0.92;
+  }
+}
+
+/* Definition/caption text under the Tags/Ending chip grids — cross-fades
+   in whenever the shown text changes (React remounts it via a `key`
+   keyed to the text itself). Fade-only, no travel: this fires on every
+   chip tap, so it stays quick and doesn't compete with the chip's own
+   feedback. */
+@keyframes caption-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.caption-fade {
+  animation: caption-fade 150ms ease-out both;
+}
+
+/* SpeakerIcon's mute/unmuted glyphs — see components/ui/icons.tsx. Both
+   groups render at once; this cross-fades between them instead of
+   snapping. */
+.speaker-glyph {
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.speaker-glyph-hidden {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pill-button,
+  .chip,
+  .text-input,
+  .icon-btn,
+  .speaker-glyph {
+    transition: none;
+  }
+  .caption-fade {
+    animation: none;
+  }
+}
+
 /* Custom-styled native range input — thin track + white thumb,
-   matching design_handoff_capoeira_annotation's Scrubber component. */
+   matching design_handoff_capoeira_annotation's Scrubber component.
+   Padding + content-box clipping (2026-09-10) gives this a larger
+   invisible touch target (28px tall) around the visually-thin 4px track,
+   same fix applied to ContextScrubber's .context-scrub-input below —
+   PlayingScreen.tsx sets its progress-fill color via inline
+   `backgroundImage` (not the `background` shorthand) specifically so it
+   doesn't reset this rule's `background-clip` back to border-box. */
 .scrub-input {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
   height: 4px;
+  padding: 12px 0;
+  box-sizing: content-box;
   border-radius: var(--radius-pill);
   outline: none;
   cursor: pointer;
   background: rgba(255, 255, 255, 0.32);
+  background-clip: content-box;
 }
 .scrub-input::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -168,6 +295,12 @@ body {
   background: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.scrub-input:active::-webkit-slider-thumb,
+.scrub-input.is-dragging::-webkit-slider-thumb {
+  transform: scale(1.4);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 0 0 6px rgba(255, 255, 255, 0.16);
 }
 .scrub-input::-moz-range-thumb {
   width: 14px;
@@ -177,11 +310,75 @@ body {
   border: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.scrub-input:active::-moz-range-thumb,
+.scrub-input.is-dragging::-moz-range-thumb {
+  transform: scale(1.4);
 }
 .scrub-input::-moz-range-track {
   height: 4px;
   border-radius: var(--radius-pill);
   background: transparent;
+}
+
+/* Context scrubber (ContextScrubber.tsx) — same thin-track look as
+   .scrub-input above, but with a larger invisible touch target (28px tall
+   element around a 4px visual track) since this one previously relied on
+   unstyled native thumb rendering (accent-color only), which renders as an
+   elongated capsule rather than a circle on macOS Safari/Chrome and gave a
+   very thin ~4px hit area that was hard to grab/drag. Thumb also grows on
+   press for tactile drag feedback. */
+.context-scrub-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 28px;
+  margin: 0;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+}
+.context-scrub-input::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.32);
+}
+.context-scrub-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.context-scrub-input:active::-webkit-slider-thumb,
+.context-scrub-input.is-dragging::-webkit-slider-thumb {
+  transform: scale(1.4);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 0 0 6px rgba(255, 255, 255, 0.16);
+}
+.context-scrub-input::-moz-range-track {
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.32);
+}
+.context-scrub-input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.context-scrub-input:active::-moz-range-thumb,
+.context-scrub-input.is-dragging::-moz-range-thumb {
+  transform: scale(1.4);
 }
 
 /* Entry / video-selection screen (SelectVideoScreen) — scoped to svs-*,
@@ -247,31 +444,8 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 20px var(--side-padding) 0;
+  padding: 32px var(--side-padding) 0;
   box-sizing: border-box;
-}
-
-.svs-statusbar {
-  flex-shrink: 0;
-  height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-family: var(--font-body);
-  font-size: 14px;
-  color: var(--on-dark);
-}
-
-.svs-dots {
-  display: flex;
-  gap: 4px;
-}
-
-.svs-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--on-dark);
 }
 
 .svs-header {
@@ -335,6 +509,10 @@ body {
   margin-bottom: 8px;
 }
 
+.svs-name-field {
+  position: relative;
+}
+
 .svs-name-input {
   width: 100%;
   font-family: var(--font-body);
@@ -352,6 +530,45 @@ body {
 }
 .svs-name-input:focus {
   border-bottom-color: var(--on-dark);
+}
+/* Empty state gets an amber underline to draw the eye to the field;
+   once there's a value, it falls back to the neutral rules above. */
+.svs-name-input:placeholder-shown {
+  border-bottom-color: rgba(235, 193, 75, 0.7);
+}
+.svs-name-input:placeholder-shown:focus {
+  border-bottom-color: #ebc14b;
+}
+
+/* Blinking pseudo-caret next to the placeholder, standing in for the
+   native caret without autofocusing (which would pop the keyboard on
+   mobile before the user has tapped in). Hidden once real focus or a
+   value gives the field its own visible caret/text. */
+.svs-name-caret {
+  position: absolute;
+  left: 100px;
+  top: 1px;
+  width: 2px;
+  height: 24px;
+  background: #ebc14b;
+  pointer-events: none;
+  animation: svs-caret-blink 1.1s steps(1) infinite;
+}
+.svs-name-input:focus ~ .svs-name-caret,
+.svs-name-input:not(:placeholder-shown) ~ .svs-name-caret {
+  animation: none;
+  opacity: 0;
+}
+
+@keyframes svs-caret-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
 }
 
 .svs-jogo-list {
@@ -373,10 +590,15 @@ body {
   text-align: left;
   font: inherit;
   color: inherit;
-  transition: background-color 0.18s ease, border-color 0.18s ease;
+  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.12s ease-out;
 }
 .svs-jogo-card:active {
-  transform: scale(0.99);
+  transform: scale(0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  .svs-jogo-card {
+    transition: background-color 0.18s ease, border-color 0.18s ease;
+  }
 }
 
 .svs-thumb {

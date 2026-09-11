@@ -47,6 +47,7 @@ export function CaptureTopbar({ frozenAt, formatTime, onCancel }: CaptureTopbarP
         <span />
       )}
       <button
+        className="icon-btn"
         onClick={onCancel}
         aria-label="Cancel and return to playing"
         style={{

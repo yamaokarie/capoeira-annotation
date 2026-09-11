@@ -92,15 +92,6 @@ export function SelectVideoScreen({
         </div>
 
         <div className="svs-content">
-          <div className="svs-statusbar">
-            <span>9:41</span>
-            <div className="svs-dots">
-              <span className="svs-dot" />
-              <span className="svs-dot" />
-              <span className="svs-dot" />
-            </div>
-          </div>
-
           <div className="svs-header">
             <div className="svs-kicker">Capoeira &middot; Moment Capture</div>
             <h1 className="svs-headline">
@@ -115,13 +106,16 @@ export function SelectVideoScreen({
           <div className="svs-scroll">
             <section className="svs-section">
               <div className="svs-section-label">Who&rsquo;s annotating</div>
-              <input
-                className="svs-name-input"
-                type="text"
-                placeholder="Your name"
-                value={annotatorName}
-                onChange={(e) => onAnnotatorNameChange(e.target.value)}
-              />
+              <div className="svs-name-field">
+                <input
+                  className="svs-name-input"
+                  type="text"
+                  placeholder="Your name"
+                  value={annotatorName}
+                  onChange={(e) => onAnnotatorNameChange(e.target.value)}
+                />
+                <span aria-hidden className="svs-name-caret" />
+              </div>
             </section>
 
             <section className="svs-section">

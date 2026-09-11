@@ -407,6 +407,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
                   }}
                 >
                   <span
+                    className="ping-ring-pulse"
                     style={{
                       position: "absolute",
                       inset: "-6px",
@@ -466,6 +467,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
 
             {!isCard && (
               <button
+                className="icon-btn"
                 onClick={() => setMuted((m) => !m)}
                 aria-label={muted ? "Unmute video" : "Mute video"}
                 style={{
@@ -495,6 +497,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
               clip layer above so the overlap isn't clipped. */}
           {isCard && (
             <button
+              className="icon-btn"
               onClick={() => setMuted((m) => !m)}
               aria-label={muted ? "Unmute video" : "Mute video"}
               style={{

@@ -1,12 +1,17 @@
 import { PillButton } from "@/components/ui/Button";
+import { SavedCheck } from "@/components/ui/SavedCheck";
+import { CaptureFooter } from "@/components/capture/CaptureFooter";
+import type { CapturePhase } from "@/lib/types";
 
 interface DoneScreenProps {
+  phase?: CapturePhase;
   momentLabel: string;
   onBackToJogo: () => void;
   onAnnotateNewVideo: () => void;
 }
 
 export function DoneScreen({
+  phase,
   momentLabel,
   onBackToJogo,
   onAnnotateNewVideo,
@@ -19,53 +24,112 @@ export function DoneScreen({
         alignItems: "center",
         textAlign: "center",
         paddingTop: "48px",
+        paddingBottom: "140px",
       }}
     >
-      <div style={{ fontSize: "48px", marginBottom: "16px" }}>✓</div>
+      <div style={{ marginBottom: "48px" }}>
+        <SavedCheck key={phase} />
+      </div>
+
+      <div
+        style={{
+          fontFamily: "var(--font-kicker)",
+          fontSize: "12px",
+          fontWeight: 600,
+          letterSpacing: "2px",
+          textTransform: "uppercase",
+          color: "var(--on-dark-soft)",
+          marginBottom: "8px",
+        }}
+      >
+        Moment Capture
+      </div>
+
       <h1
         style={{
-          fontSize: "24px",
           fontFamily: "var(--font-display)",
-          marginBottom: "8px",
+          fontWeight: 900,
+          fontSize: "40px",
+          lineHeight: 1,
+          letterSpacing: "-0.5px",
+          color: "var(--on-dark)",
+          margin: "0 0 24px",
         }}
       >
         Moment saved
       </h1>
-      <p
-        style={{
-          fontSize: "14px",
-          color: "var(--soft)",
-          marginBottom: "48px",
-        }}
-      >
-        Your annotation at {momentLabel} has been recorded.
-      </p>
 
       <div
         style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "var(--gap-sm)",
-          width: "100%",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "8px",
+          padding: "8px 18px",
+          borderRadius: "var(--radius-pill)",
+          border: "1px solid color-mix(in srgb, var(--accent) 35%, transparent)",
+          marginBottom: "24px",
         }}
       >
-        <PillButton onClick={onBackToJogo}>Back to Jogo</PillButton>
-        <button
-          onClick={onAnnotateNewVideo}
+        <span
           style={{
-            height: "var(--height-button)",
-            borderRadius: "var(--radius-pill)",
-            backgroundColor: "transparent",
-            border: "1px solid var(--soft)",
-            color: "var(--ink)",
-            cursor: "pointer",
-            fontWeight: 600,
-            fontSize: "14px",
+            width: "6px",
+            height: "6px",
+            borderRadius: "50%",
+            backgroundColor: "var(--accent)",
+          }}
+        />
+        <span
+          style={{
+            fontFamily: "var(--font-serif-italic)",
+            fontStyle: "italic",
+            fontSize: "15px",
+            color: "var(--accent)",
           }}
         >
-          Annotate a New Video
-        </button>
+          frozen at {momentLabel}
+        </span>
       </div>
+
+      <p
+        style={{
+          fontFamily: "var(--font-serif-italic)",
+          fontStyle: "italic",
+          fontSize: "17px",
+          color: "var(--on-dark-soft)",
+          margin: 0,
+        }}
+      >
+        Your annotation has been recorded.
+      </p>
+
+      <CaptureFooter>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--gap-sm)",
+            width: "100%",
+          }}
+        >
+          <PillButton onClick={onBackToJogo}>Back to Jogo</PillButton>
+          <button
+            className="pill-button"
+            onClick={onAnnotateNewVideo}
+            style={{
+              height: "var(--height-button)",
+              borderRadius: "var(--radius-pill)",
+              backgroundColor: "transparent",
+              border: "1px solid var(--hairline-strong)",
+              color: "var(--on-dark)",
+              cursor: "pointer",
+              fontWeight: 600,
+              fontSize: "14px",
+            }}
+          >
+            Annotate a New Video
+          </button>
+        </div>
+      </CaptureFooter>
     </div>
   );
 }

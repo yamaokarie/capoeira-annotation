@@ -1,0 +1,101 @@
+.wrap {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  animation: ring-in 620ms cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+.disc {
+  position: absolute;
+  inset: 14px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  animation: disc-in 720ms cubic-bezier(0.2, 0.8, 0.25, 1) 80ms both;
+}
+
+.checkWrap {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  transform-origin: center;
+  animation: check-pop 1100ms ease 200ms both;
+}
+
+.checkStroke {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: check-draw 620ms cubic-bezier(0.55, 0.1, 0.35, 1) 320ms both;
+}
+
+@keyframes ring-in {
+  from {
+    transform: scale(0.72);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes disc-in {
+  from {
+    transform: scale(0.72);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes check-draw {
+  from {
+    stroke-dashoffset: 48;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes check-pop {
+  0%,
+  55% {
+    transform: scale(1);
+  }
+  72% {
+    transform: scale(1.09);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring,
+  .disc,
+  .checkWrap {
+    animation: none;
+  }
+
+  .checkStroke {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
