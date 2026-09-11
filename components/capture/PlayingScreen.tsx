@@ -36,55 +36,61 @@ export function PlayingScreen({
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "18px" }}>
       <div
         style={{
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)",
           alignItems: "center",
-          justifyContent: "center",
-          gap: "26px",
+          columnGap: "26px",
+          width: "100%",
         }}
       >
-        <button
-          onClick={() => {
-            const nextIndex = (speedIndex + 1) % SPEEDS.length;
-            setSpeedIndex(nextIndex);
-            onSetPlaybackRate(SPEEDS[nextIndex]);
-          }}
-          aria-label="Change playback speed"
-          style={{
-            height: "30px",
-            minWidth: "40px",
-            padding: "0 11px",
-            borderRadius: "var(--radius-pill)",
-            backgroundColor: "rgba(0, 0, 0, 0.28)",
-            backdropFilter: "blur(8px)",
-            color: "var(--on-dark)",
-            border: "1px solid rgba(255, 255, 255, 0.4)",
-            cursor: "pointer",
-            fontSize: "13px",
-            fontWeight: 600,
-            letterSpacing: "0.2px",
-            fontVariantNumeric: "tabular-nums",
-          }}
-        >
-          {formatSpeed(SPEEDS[speedIndex])}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "26px" }}>
+          <button
+            onClick={() => {
+              const nextIndex = (speedIndex + 1) % SPEEDS.length;
+              setSpeedIndex(nextIndex);
+              onSetPlaybackRate(SPEEDS[nextIndex]);
+            }}
+            aria-label="Change playback speed"
+            style={{
+              height: "30px",
+              width: "56px",
+              flex: "0 0 auto",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "var(--radius-pill)",
+              backgroundColor: "rgba(0, 0, 0, 0.28)",
+              backdropFilter: "blur(8px)",
+              color: "var(--on-dark)",
+              border: "1px solid rgba(255, 255, 255, 0.4)",
+              cursor: "pointer",
+              fontSize: "13px",
+              fontWeight: 600,
+              letterSpacing: "0.2px",
+              fontVariantNumeric: "tabular-nums lining-nums",
+            }}
+          >
+            {formatSpeed(SPEEDS[speedIndex])}
+          </button>
 
-        <button
-          onClick={() => onSkip(-5)}
-          aria-label="Back 5 seconds"
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            fontSize: "16px",
-            fontWeight: 600,
-            letterSpacing: "0.3px",
-            color: "rgba(255, 255, 255, 0.92)",
-            fontVariantNumeric: "tabular-nums",
-            padding: "8px 6px",
-          }}
-        >
-          −5s
-        </button>
+          <button
+            onClick={() => onSkip(-5)}
+            aria-label="Back 5 seconds"
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: "16px",
+              fontWeight: 600,
+              letterSpacing: "0.3px",
+              color: "rgba(255, 255, 255, 0.92)",
+              fontVariantNumeric: "tabular-nums",
+              padding: "8px 6px",
+            }}
+          >
+            −5s
+          </button>
+        </div>
 
         <button
           onClick={() => onPlayingChange(!playing)}
@@ -107,28 +113,33 @@ export function PlayingScreen({
           {playing ? <PauseIcon size={26} color="#0c0a09" /> : <PlayIcon size={26} color="#0c0a09" />}
         </button>
 
-        <button
-          onClick={() => onSkip(5)}
-          aria-label="Forward 5 seconds"
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            fontSize: "16px",
-            fontWeight: 600,
-            letterSpacing: "0.3px",
-            color: "rgba(255, 255, 255, 0.92)",
-            fontVariantNumeric: "tabular-nums",
-            padding: "8px 6px",
-          }}
-        >
-          +5s
-        </button>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
+          <button
+            onClick={() => onSkip(5)}
+            aria-label="Forward 5 seconds"
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: "16px",
+              fontWeight: 600,
+              letterSpacing: "0.3px",
+              color: "rgba(255, 255, 255, 0.92)",
+              fontVariantNumeric: "tabular-nums",
+              padding: "8px 6px",
+            }}
+          >
+            +5s
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "11px", width: "100%" }}>
         <span
           style={{
+            width: "34px",
+            flex: "0 0 auto",
+            textAlign: "left",
             color: "var(--on-dark)",
             fontSize: "12px",
             fontVariantNumeric: "tabular-nums",
@@ -152,7 +163,16 @@ export function PlayingScreen({
             backgroundImage: `linear-gradient(to right, #fff ${pct}%, rgba(255,255,255,0.32) ${pct}%)`,
           }}
         />
-        <span style={{ color: "var(--on-dark-soft)", fontSize: "12px", fontVariantNumeric: "tabular-nums" }}>
+        <span
+          style={{
+            width: "34px",
+            flex: "0 0 auto",
+            textAlign: "right",
+            color: "var(--on-dark-soft)",
+            fontSize: "12px",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
           {formatTime(duration)}
         </span>
       </div>

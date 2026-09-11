@@ -3,7 +3,8 @@ export interface Video {
   videoTitle: string;
   youtubeId: string;
   style?: "angola" | "regional" | "contemporary";
-  // Not yet returned by /api/videos — display-only, degrade gracefully when absent.
+  // context/aspect/durationLabel not yet returned by /api/videos — display-only,
+  // degrade gracefully when absent. thumbnailUrl is returned (derived from youtubeId).
   context?: string;
   aspect?: string;
   durationLabel?: string;

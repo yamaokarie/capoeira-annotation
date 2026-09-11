@@ -42,6 +42,7 @@ export async function GET() {
       videoTitle: record.fields.videoTitle,
       youtubeId: record.fields.youtubeId,
       style: record.fields.style,
+      thumbnailUrl: thumbnailUrlFor(record.fields.youtubeId),
     }));
 
     return NextResponse.json({ videos });
@@ -52,6 +53,10 @@ export async function GET() {
       { status: 500 }
     );
   }
+}
+
+function thumbnailUrlFor(youtubeId: string | undefined): string | undefined {
+  return youtubeId ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` : undefined;
 }
 
 function extractYoutubeId(url: string): string | null {
@@ -136,6 +141,7 @@ export async function POST(request: NextRequest) {
         videoTitle: created.videoTitle,
         youtubeId: created.youtubeId,
         style: created.style,
+        thumbnailUrl: thumbnailUrlFor(created.youtubeId),
       },
     });
   } catch (error) {
