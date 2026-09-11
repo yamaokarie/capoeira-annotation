@@ -54,6 +54,23 @@ export default function Home() {
   // Orbs stay off Playing (unchanged from before) but extend to Done.
   const showOrbs = isCapturePhase || captureState.phase === "done";
 
+  // Playing/Why/Surprising/Tags/Ending/Done paint an ink background on their
+  // own root div, but that div is only as tall as its content — on mobile
+  // Safari, rubber-band overscroll past the top/bottom reveals whatever's
+  // behind it, which is `body`'s own background. Body defaults to the light
+  // `--canvas` (right for the Select screen's desktop wash), so without this
+  // it flashed white during a bounce on every dark screen. Syncing body's
+  // background to match keeps the black + blurred-orb backdrop looking
+  // infinite regardless of scroll position.
+  useEffect(() => {
+    document.body.style.backgroundColor = showDarkBackground
+      ? "var(--ink)"
+      : "";
+    return () => {
+      document.body.style.backgroundColor = "";
+    };
+  }, [showDarkBackground]);
+
   useEffect(() => {
     fetch("/api/videos")
       .then((r) => r.json())
