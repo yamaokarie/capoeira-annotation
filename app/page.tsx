@@ -265,10 +265,7 @@ export default function Home() {
               >
                 <button
                   className="icon-btn"
-                  onClick={() => {
-                    captureState.setSelectedVideo(null);
-                    captureState.setPhase("select");
-                  }}
+                  onClick={() => captureState.backToSelect()}
                   aria-label="Back to video selection"
                   style={{
                     width: "34px",
@@ -399,8 +396,7 @@ export default function Home() {
                 setAudioBlob(null);
               }}
               onAnnotateNewVideo={() => {
-                captureState.setSelectedVideo(null);
-                captureState.setPhase("select");
+                captureState.backToSelect();
                 setAudioBlob(null);
               }}
             />

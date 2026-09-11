@@ -42,6 +42,21 @@ export function useCaptureState() {
     setAnswers(initialAnswers);
   };
 
+  // Full reset for leaving the capture flow entirely — used whenever we
+  // return to the Select screen (Done's "Annotate a New Video", Playing's
+  // back button). Distinct from `cancel`, which keeps the same video and
+  // just backs out of a moment; this also clears `selectedVideo` and, unlike
+  // `cancel`, `frozenAt`/`answers` here matter because the *next* video
+  // picked could otherwise inherit the previous one's frozen timestamp and
+  // answers (frozenAt isn't persisted to localStorage, but it does survive
+  // in memory across a video switch within the same session).
+  const backToSelect = () => {
+    setPhase("select");
+    setSelectedVideo(null);
+    setFrozenAt(null);
+    setAnswers(initialAnswers);
+  };
+
   useEffect(() => {
     const state = { phase, annotatorName, selectedVideo, answers };
     localStorage.setItem("capoeira-capture-state", JSON.stringify(state));
@@ -60,5 +75,6 @@ export function useCaptureState() {
     updateAnswer,
     resetForNextMoment,
     cancel,
+    backToSelect,
   };
 }
