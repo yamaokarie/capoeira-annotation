@@ -4,10 +4,16 @@ import { formatPreciseTime } from "@/lib/time";
 interface ContextScrubberProps {
   frozenAt: number;
   duration: number;
-  // Re-seeks the actual video so its preview frame reflects the pending
-  // nudge — commit is separate (see onRepositionFreeze) so a burst of taps
-  // doesn't repeatedly move the saved freeze point.
+  // Current preview/playback position — kept in sync by the parent with
+  // actual playback (including play/pause via YouTube's own native
+  // controls on the Why screen's card variant, not just drags/nudges here).
+  value: number;
+  // Re-seeks the actual video so its preview frame reflects wherever the
+  // head/nudge lands — committing the new freeze point is separate (see
+  // onRepositionFreeze) so neither a drag-in-progress nor a burst of nudge
+  // taps repeatedly moves the saved freeze point.
   onSeek: (seconds: number) => void;
+  playing: boolean;
   onRepositionFreeze: (seconds: number) => void;
 }
 
@@ -23,61 +29,56 @@ const NUDGE_BUTTON_STYLE: CSSProperties = {
   padding: "6px 8px",
 };
 
-// How long to wait after the last nudge tap before offering to commit —
-// long enough that tapping +0.1s/-0.1s repeatedly in quick succession
-// doesn't flash the "Move freeze to" tag after every single tap.
-const SETTLE_DELAY_MS = 700;
+// How long to wait after the last nudge-button tap before offering to
+// commit — long enough that tapping +0.1s/-0.1s repeatedly in quick
+// succession doesn't flash the "Move freeze to" tag after every tap. A
+// drag release or a native pause doesn't need this: those already have a
+// clear "I've stopped" moment (pointerup / playing turning false).
+const NUDGE_SETTLE_DELAY_MS = 700;
 
-// Timeline showing the frozen moment (fixed, pulsating red dot) plus a row
-// of +/-1s / +/-0.1s buttons to nudge it. Nudging re-seeks the video (so its
-// preview frame updates live) but only *previews* a new freeze point — nudge
-// again and it keeps adjusting from wherever you left off. Only once nudging
-// pauses for a beat does the "Move freeze to m:ss" tag appear, which is what
-// actually commits the change. Replaces an earlier draggable-scrubber design
-// (a native range input dragged across the whole video) that made fine
-// adjustments hard to land and was confusing alongside these buttons.
+// Timeline showing the frozen moment (fixed, pulsating red dot) under the
+// video, plus: a draggable head (tracks live playback so it stays visible
+// even if the video is resumed via its own native controls) and a row of
+// +/-1s / +/-0.1s nudge buttons for exact adjustments a drag can't easily
+// land. Either input previews a new freeze point without committing it —
+// "Move freeze to m:ss" is what actually commits, shown once things settle
+// (drag release / pause immediately, nudge taps after a brief pause).
 export function ContextScrubber({
   frozenAt,
   duration,
+  value,
   onSeek,
+  playing,
   onRepositionFreeze,
 }: ContextScrubberProps) {
   const max = duration || Math.max(frozenAt, 1);
   const dotFrac = Math.min(1, frozenAt / max);
+  const valueFrac = Math.min(1, value / max);
 
-  const [pending, setPending] = useState<number | null>(null);
-  const [settled, setSettled] = useState(false);
-  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [nudgeCooldown, setNudgeCooldown] = useState(false);
+  const nudgeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
-      if (settleTimer.current) clearTimeout(settleTimer.current);
+      if (nudgeTimer.current) clearTimeout(nudgeTimer.current);
     };
   }, []);
 
-  const previewValue = pending ?? frozenAt;
-  const previewFrac = Math.min(1, previewValue / max);
-
   const nudge = (delta: number) => {
-    const next = Math.min(max, Math.max(0, previewValue + delta));
+    const next = Math.min(max, Math.max(0, value + delta));
     onSeek(next);
-    setPending(next);
-    setSettled(false);
-    if (settleTimer.current) clearTimeout(settleTimer.current);
-    settleTimer.current = setTimeout(() => setSettled(true), SETTLE_DELAY_MS);
+    setNudgeCooldown(true);
+    if (nudgeTimer.current) clearTimeout(nudgeTimer.current);
+    nudgeTimer.current = setTimeout(() => setNudgeCooldown(false), NUDGE_SETTLE_DELAY_MS);
   };
 
-  const commitReposition = () => {
-    if (pending === null) return;
-    onRepositionFreeze(pending);
-    setPending(null);
-    setSettled(false);
-    if (settleTimer.current) clearTimeout(settleTimer.current);
-  };
-
-  const showReposition = settled && pending !== null && Math.abs(pending - frozenAt) > 0.001;
-  const atMin = previewValue <= 0;
-  const atMax = previewValue >= max;
+  // Only once things have settled — not mid-drag, not mid-playback, not
+  // mid-nudge-burst — offer to move the freeze there instead.
+  const showReposition =
+    !dragging && !playing && !nudgeCooldown && Math.abs(value - frozenAt) > 0.4;
+  const atMin = value <= 0;
+  const atMax = value >= max;
 
   return (
     <div
@@ -89,69 +90,71 @@ export function ContextScrubber({
         marginBottom: "16px",
       }}
     >
-      <div style={{ position: "relative", height: "24px", display: "flex", alignItems: "center" }}>
-        <div
-          aria-hidden
-          style={{
-            width: "100%",
-            height: "6px",
-            borderRadius: "var(--radius-pill)",
-            backgroundColor: "rgba(255, 255, 255, 0.32)",
-          }}
-        />
-        {showReposition && (
-          <button
-            className="reposition-tag"
-            onClick={commitReposition}
-            style={{
-              position: "absolute",
-              top: "-38px",
-              left: `clamp(52px, calc(100% * ${previewFrac}), calc(100% - 52px))`,
-              transform: "translateX(-50%)",
-              whiteSpace: "nowrap",
-              padding: "7px 14px",
-              borderRadius: "var(--radius-pill)",
-              border: "none",
-              cursor: "pointer",
-              backgroundColor: "var(--cream)",
-              color: "#0c0a09",
-              fontSize: "12px",
-              fontWeight: 600,
-              boxShadow: "0 6px 18px -6px rgba(0, 0, 0, 0.55)",
-              zIndex: 2,
-              animation: "reposition-tag-in 0.15s ease-out",
-            }}
-          >
-            Move freeze to {formatPreciseTime(pending ?? frozenAt)}
-          </button>
-        )}
-        <div
-          aria-hidden
+      <input
+        type="range"
+        className={dragging ? "context-scrub-input is-dragging" : "context-scrub-input"}
+        min={0}
+        max={max}
+        step={0.1}
+        value={value}
+        onChange={(e) => onSeek(Number(e.target.value))}
+        onPointerDown={() => setDragging(true)}
+        onPointerUp={() => setDragging(false)}
+        style={{ display: "block" }}
+        aria-label="Scrub surrounding context"
+      />
+      {showReposition && (
+        <button
+          className="reposition-tag"
+          onClick={() => onRepositionFreeze(value)}
           style={{
             position: "absolute",
-            top: "50%",
-            left: `calc(100% * ${dotFrac} - 5px)`,
-            transform: "translateY(-50%)",
-            width: "10px",
-            height: "10px",
-            borderRadius: "50%",
-            backgroundColor: "#e2483d",
-            boxShadow: "0 0 0 2px rgba(252, 251, 249, 0.92), 0 1px 4px rgba(0, 0, 0, 0.4)",
-            pointerEvents: "none",
+            top: "-38px",
+            left: `clamp(52px, calc(12px + (100% - 24px) * ${valueFrac}), calc(100% - 52px))`,
+            transform: "translateX(-50%)",
+            whiteSpace: "nowrap",
+            padding: "7px 14px",
+            borderRadius: "var(--radius-pill)",
+            border: "none",
+            cursor: "pointer",
+            backgroundColor: "var(--cream)",
+            color: "#0c0a09",
+            fontSize: "12px",
+            fontWeight: 600,
+            boxShadow: "0 6px 18px -6px rgba(0, 0, 0, 0.55)",
+            zIndex: 2,
+            animation: "reposition-tag-in 0.15s ease-out",
           }}
         >
-          <span
-            className="context-dot-pulse"
-            style={{
-              position: "absolute",
-              inset: "-6px",
-              borderRadius: "50%",
-              border: "3px solid #e2483d",
-              filter: "blur(3px)",
-              animation: "dot-pulse-soft 2.4s ease-out infinite",
-            }}
-          />
-        </div>
+          Move freeze to {formatPreciseTime(value)}
+        </button>
+      )}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: `calc(12px + (100% - 24px) * ${dotFrac} - 5px)`,
+          transform: "translateY(-50%)",
+          width: "10px",
+          height: "10px",
+          borderRadius: "50%",
+          backgroundColor: "#e2483d",
+          boxShadow: "0 0 0 2px rgba(252, 251, 249, 0.92), 0 1px 4px rgba(0, 0, 0, 0.4)",
+          pointerEvents: "none",
+        }}
+      >
+        <span
+          className="context-dot-pulse"
+          style={{
+            position: "absolute",
+            inset: "-6px",
+            borderRadius: "50%",
+            border: "3px solid #e2483d",
+            filter: "blur(3px)",
+            animation: "dot-pulse-soft 2.4s ease-out infinite",
+          }}
+        />
       </div>
       <div
         style={{
@@ -159,7 +162,7 @@ export function ContextScrubber({
           alignItems: "center",
           justifyContent: "center",
           gap: "4px",
-          marginTop: "10px",
+          marginTop: "6px",
         }}
       >
         <button

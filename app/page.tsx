@@ -300,7 +300,9 @@ export default function Home() {
               <ContextScrubber
                 frozenAt={captureState.frozenAt}
                 duration={duration}
+                value={currentTime}
                 onSeek={handleSeek}
+                playing={videoPlaying}
                 onRepositionFreeze={handleRepositionFreeze}
               />
             )}
