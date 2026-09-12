@@ -90,71 +90,79 @@ export function ContextScrubber({
         marginBottom: "16px",
       }}
     >
-      <input
-        type="range"
-        className={dragging ? "context-scrub-input is-dragging" : "context-scrub-input"}
-        min={0}
-        max={max}
-        step={0.1}
-        value={value}
-        onChange={(e) => onSeek(Number(e.target.value))}
-        onPointerDown={() => setDragging(true)}
-        onPointerUp={() => setDragging(false)}
-        style={{ display: "block" }}
-        aria-label="Scrub surrounding context"
-      />
-      {showReposition && (
-        <button
-          className="reposition-tag"
-          onClick={() => onRepositionFreeze(value)}
+      {/* Own wrapper (no padding) so its height is exactly the input's —
+          the dot's `top: 50%` needs to center on the track alone, not on
+          the track plus the nudge-button row below it. */}
+      <div style={{ position: "relative" }}>
+        <input
+          type="range"
+          className={dragging ? "context-scrub-input is-dragging" : "context-scrub-input"}
+          min={0}
+          max={max}
+          step={0.1}
+          value={value}
+          onChange={(e) => onSeek(Number(e.target.value))}
+          onPointerDown={() => setDragging(true)}
+          onPointerUp={() => setDragging(false)}
+          style={{ display: "block" }}
+          aria-label="Scrub surrounding context"
+        />
+        {showReposition && (
+          <button
+            className="reposition-tag"
+            onClick={() => onRepositionFreeze(value)}
+            style={{
+              position: "absolute",
+              top: "-38px",
+              left: `clamp(52px, calc(100% * ${valueFrac}), calc(100% - 52px))`,
+              transform: "translateX(-50%)",
+              whiteSpace: "nowrap",
+              padding: "7px 14px",
+              borderRadius: "var(--radius-pill)",
+              border: "none",
+              cursor: "pointer",
+              backgroundColor: "var(--cream)",
+              color: "#0c0a09",
+              fontSize: "12px",
+              fontWeight: 600,
+              boxShadow: "0 6px 18px -6px rgba(0, 0, 0, 0.55)",
+              zIndex: 2,
+              animation: "reposition-tag-in 0.15s ease-out",
+            }}
+          >
+            Move freeze to {formatPreciseTime(value)}
+          </button>
+        )}
+        {/* pointerEvents: none so this (and the reposition tag above it,
+            when overlapping) never block dragging the input beneath. */}
+        <div
+          aria-hidden
           style={{
             position: "absolute",
-            top: "-38px",
-            left: `clamp(52px, calc(12px + (100% - 24px) * ${valueFrac}), calc(100% - 52px))`,
-            transform: "translateX(-50%)",
-            whiteSpace: "nowrap",
-            padding: "7px 14px",
-            borderRadius: "var(--radius-pill)",
-            border: "none",
-            cursor: "pointer",
-            backgroundColor: "var(--cream)",
-            color: "#0c0a09",
-            fontSize: "12px",
-            fontWeight: 600,
-            boxShadow: "0 6px 18px -6px rgba(0, 0, 0, 0.55)",
-            zIndex: 2,
-            animation: "reposition-tag-in 0.15s ease-out",
+            top: "50%",
+            left: `calc(100% * ${dotFrac} - 5px)`,
+            transform: "translateY(-50%)",
+            width: "10px",
+            height: "10px",
+            borderRadius: "50%",
+            backgroundColor: "#e2483d",
+            boxShadow: "0 0 0 2px rgba(252, 251, 249, 0.92), 0 1px 4px rgba(0, 0, 0, 0.4)",
+            pointerEvents: "none",
+            zIndex: 1,
           }}
         >
-          Move freeze to {formatPreciseTime(value)}
-        </button>
-      )}
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          top: "50%",
-          left: `calc(12px + (100% - 24px) * ${dotFrac} - 5px)`,
-          transform: "translateY(-50%)",
-          width: "10px",
-          height: "10px",
-          borderRadius: "50%",
-          backgroundColor: "#e2483d",
-          boxShadow: "0 0 0 2px rgba(252, 251, 249, 0.92), 0 1px 4px rgba(0, 0, 0, 0.4)",
-          pointerEvents: "none",
-        }}
-      >
-        <span
-          className="context-dot-pulse"
-          style={{
-            position: "absolute",
-            inset: "-6px",
-            borderRadius: "50%",
-            border: "3px solid #e2483d",
-            filter: "blur(3px)",
-            animation: "dot-pulse-soft 2.4s ease-out infinite",
-          }}
-        />
+          <span
+            className="context-dot-pulse"
+            style={{
+              position: "absolute",
+              inset: "-6px",
+              borderRadius: "50%",
+              border: "3px solid #e2483d",
+              filter: "blur(3px)",
+              animation: "dot-pulse-soft 2.4s ease-out infinite",
+            }}
+          />
+        </div>
       </div>
       <div
         style={{
