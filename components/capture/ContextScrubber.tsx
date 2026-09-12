@@ -1,5 +1,26 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { formatPreciseTime } from "@/lib/time";
+
+// Minimum gap to keep between the "Move freeze to" tag and either edge of
+// its container, so it never touches (let alone crosses) the frame's edge.
+const TAG_EDGE_MARGIN_PX = 8;
+
+// Must match .context-scrub-input's thumb width/dot size in globals.css.
+const THUMB_WIDTH_PX = 20;
+const DOT_SIZE_PX = 10;
+
+// A native range input's thumb doesn't travel the full track width — its
+// *center* travels from thumbWidth/2 (at min) to trackWidth - thumbWidth/2
+// (at max), so it never hangs off either end. Positioning the frozen dot
+// with a naive `frac * trackWidth` (as before) only coincides with the
+// thumb at the track's exact midpoint; anywhere else — including right
+// after committing a freeze point, where frozenAt and value are the same
+// number — the dot would visibly land a few to ~10px off from the thumb
+// it's supposed to mark. Mirror the browser's own formula so they always
+// coincide exactly.
+function thumbCenterPx(frac: number, containerWidth: number): number {
+  return frac * (containerWidth - THUMB_WIDTH_PX) + THUMB_WIDTH_PX / 2;
+}
 
 interface ContextScrubberProps {
   frozenAt: number;
@@ -65,6 +86,27 @@ export function ContextScrubber({
     };
   }, []);
 
+  // The tag's width varies with its text ("Move freeze to 0:04.5" vs
+  // "...to 12:34.5"), so centering it on the target point with a fixed
+  // pixel margin (the old approach) let it run off the container's edge
+  // whenever the target sat near either end of a longer video. Measure the
+  // tag's actual rendered width and clamp its *left edge* to stay fully
+  // inside the container instead of clamping its center.
+  const trackWrapRef = useRef<HTMLDivElement>(null);
+  const tagRef = useRef<HTMLButtonElement>(null);
+  const [tagLeft, setTagLeft] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = trackWrapRef.current;
+    if (!el) return;
+    const update = () => setContainerWidth(el.offsetWidth);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const nudge = (delta: number) => {
     const next = Math.min(max, Math.max(0, value + delta));
     onSeek(next);
@@ -80,6 +122,23 @@ export function ContextScrubber({
   const atMin = value <= 0;
   const atMax = value >= max;
 
+  // Runs synchronously before paint, so the tag never visibly flashes at
+  // an unclamped position first.
+  useLayoutEffect(() => {
+    if (!showReposition) return;
+    const tag = tagRef.current;
+    if (!tag || !containerWidth) return;
+    const tagWidth = tag.offsetWidth;
+    const center = thumbCenterPx(valueFrac, containerWidth);
+    const maxLeft = Math.max(TAG_EDGE_MARGIN_PX, containerWidth - tagWidth - TAG_EDGE_MARGIN_PX);
+    const left = Math.min(Math.max(center - tagWidth / 2, TAG_EDGE_MARGIN_PX), maxLeft);
+    setTagLeft(left);
+  }, [showReposition, valueFrac, value, containerWidth]);
+
+  const dotLeft = containerWidth
+    ? thumbCenterPx(dotFrac, containerWidth) - DOT_SIZE_PX / 2
+    : 0;
+
   return (
     <div
       style={{
@@ -93,7 +152,7 @@ export function ContextScrubber({
       {/* Own wrapper (no padding) so its height is exactly the input's —
           the dot's `top: 50%` needs to center on the track alone, not on
           the track plus the nudge-button row below it. */}
-      <div style={{ position: "relative" }}>
+      <div ref={trackWrapRef} style={{ position: "relative" }}>
         <input
           type="range"
           className={dragging ? "context-scrub-input is-dragging" : "context-scrub-input"}
@@ -109,13 +168,13 @@ export function ContextScrubber({
         />
         {showReposition && (
           <button
+            ref={tagRef}
             className="reposition-tag"
             onClick={() => onRepositionFreeze(value)}
             style={{
               position: "absolute",
               top: "-38px",
-              left: `clamp(52px, calc(100% * ${valueFrac}), calc(100% - 52px))`,
-              transform: "translateX(-50%)",
+              left: `${tagLeft}px`,
               whiteSpace: "nowrap",
               padding: "7px 14px",
               borderRadius: "var(--radius-pill)",
@@ -140,10 +199,10 @@ export function ContextScrubber({
           style={{
             position: "absolute",
             top: "50%",
-            left: `calc(100% * ${dotFrac} - 5px)`,
+            left: `${dotLeft}px`,
             transform: "translateY(-50%)",
-            width: "10px",
-            height: "10px",
+            width: `${DOT_SIZE_PX}px`,
+            height: `${DOT_SIZE_PX}px`,
             borderRadius: "50%",
             backgroundColor: "#e2483d",
             boxShadow: "0 0 0 2px rgba(252, 251, 249, 0.92), 0 1px 4px rgba(0, 0, 0, 0.4)",
