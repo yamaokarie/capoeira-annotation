@@ -185,7 +185,7 @@ export default function Home() {
           videoId: captureState.selectedVideo,
           videoTitle: selectedVideoData?.videoTitle,
           momentTimestamp: captureState.frozenAt,
-          momentLabel: videoPlayer.formatTime(captureState.frozenAt),
+          momentLabel: videoPlayer.formatPreciseTime(captureState.frozenAt),
           annotatorName: captureState.annotatorName,
           whyMode,
           transcript,
@@ -252,7 +252,7 @@ export default function Home() {
             {isCapturePhase ? (
               <CaptureTopbar
                 frozenAt={captureState.frozenAt}
-                formatTime={videoPlayer.formatTime}
+                formatTime={videoPlayer.formatPreciseTime}
                 onCancel={handleCancel}
               />
             ) : captureState.phase === "playing" ? (
@@ -300,12 +300,8 @@ export default function Home() {
               <ContextScrubber
                 frozenAt={captureState.frozenAt}
                 duration={duration}
-                value={currentTime}
-                onScrub={handleSeek}
-                playing={videoPlaying}
-                onRepositionFreeze={
-                  captureState.phase === "why" ? handleRepositionFreeze : undefined
-                }
+                onSeek={handleSeek}
+                onRepositionFreeze={handleRepositionFreeze}
               />
             )}
           </>
@@ -389,7 +385,7 @@ export default function Home() {
           <div key={captureState.phase} className="screen-enter">
             <DoneScreen
               phase={captureState.phase}
-              momentLabel={videoPlayer.formatTime(captureState.frozenAt)}
+              momentLabel={videoPlayer.formatPreciseTime(captureState.frozenAt)}
               onBackToJogo={() => {
                 captureState.resetForNextMoment();
                 videoPlayer.setPlaying(true);

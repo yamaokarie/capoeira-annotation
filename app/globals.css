@@ -268,8 +268,7 @@ body {
 /* Custom-styled native range input — thin track + white thumb,
    matching design_handoff_capoeira_annotation's Scrubber component.
    Padding + content-box clipping (2026-09-10) gives this a larger
-   invisible touch target (28px tall) around the visually-thin 4px track,
-   same fix applied to ContextScrubber's .context-scrub-input below —
+   invisible touch target (28px tall) around the visually-thin 4px track.
    PlayingScreen.tsx sets its progress-fill color via inline
    `backgroundImage` (not the `background` shorthand) specifically so it
    doesn't reset this rule's `background-clip` back to border-box. */
@@ -320,65 +319,6 @@ body {
   height: 4px;
   border-radius: var(--radius-pill);
   background: transparent;
-}
-
-/* Context scrubber (ContextScrubber.tsx) — same thin-track look as
-   .scrub-input above, but with a larger invisible touch target (28px tall
-   element around a 4px visual track) since this one previously relied on
-   unstyled native thumb rendering (accent-color only), which renders as an
-   elongated capsule rather than a circle on macOS Safari/Chrome and gave a
-   very thin ~4px hit area that was hard to grab/drag. Thumb also grows on
-   press for tactile drag feedback. */
-.context-scrub-input {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 28px;
-  margin: 0;
-  background: transparent;
-  outline: none;
-  cursor: pointer;
-}
-.context-scrub-input::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.32);
-}
-.context-scrub-input::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  margin-top: -6px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-}
-.context-scrub-input:active::-webkit-slider-thumb,
-.context-scrub-input.is-dragging::-webkit-slider-thumb {
-  transform: scale(1.4);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 0 0 6px rgba(255, 255, 255, 0.16);
-}
-.context-scrub-input::-moz-range-track {
-  height: 4px;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.32);
-}
-.context-scrub-input::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #fff;
-  border: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-}
-.context-scrub-input:active::-moz-range-thumb,
-.context-scrub-input.is-dragging::-moz-range-thumb {
-  transform: scale(1.4);
 }
 
 /* Entry / video-selection screen (SelectVideoScreen) — scoped to svs-*,

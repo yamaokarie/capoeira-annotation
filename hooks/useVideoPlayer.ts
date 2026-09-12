@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatPreciseTime } from "@/lib/time";
 
 export function useVideoPlayer() {
   const [playing, setPlaying] = useState(false);
@@ -13,5 +14,6 @@ export function useVideoPlayer() {
     playing,
     setPlaying,
     formatTime,
+    formatPreciseTime,
   };
 }
