@@ -36,18 +36,24 @@ interface ContextScrubberProps {
   onSeek: (seconds: number) => void;
   playing: boolean;
   onRepositionFreeze: (seconds: number) => void;
+  // Why screen only — everywhere else the video/scrubber stays mounted for
+  // continuity, but the frozen moment is already locked in, so dragging,
+  // nudging, or resuming/pausing native playback must only preview (via
+  // onSeek) and never surface the "Move freeze to" commit affordance.
+  canReposition: boolean;
 }
 
 const NUDGE_BUTTON_STYLE: CSSProperties = {
-  background: "none",
-  border: "none",
+  background: "rgba(255, 255, 255, 0.07)",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  borderRadius: "8px",
   cursor: "pointer",
-  fontSize: "13px",
-  fontWeight: 600,
+  fontSize: "14px",
+  fontWeight: 500,
   letterSpacing: "0.2px",
-  color: "rgba(255, 255, 255, 0.92)",
+  color: "#b5a898",
   fontVariantNumeric: "tabular-nums",
-  padding: "6px 8px",
+  padding: "8px 16px",
 };
 
 // How long to wait after the last nudge-button tap before offering to
@@ -71,6 +77,7 @@ export function ContextScrubber({
   onSeek,
   playing,
   onRepositionFreeze,
+  canReposition,
 }: ContextScrubberProps) {
   const max = duration || Math.max(frozenAt, 1);
   const dotFrac = Math.min(1, frozenAt / max);
@@ -116,9 +123,15 @@ export function ContextScrubber({
   };
 
   // Only once things have settled — not mid-drag, not mid-playback, not
-  // mid-nudge-burst — offer to move the freeze there instead.
+  // mid-nudge-burst — offer to move the freeze there instead. Never offered
+  // at all outside the Why screen (canReposition false): the frozen moment
+  // is already locked in there, so scrubbing/nudging is preview-only.
   const showReposition =
-    !dragging && !playing && !nudgeCooldown && Math.abs(value - frozenAt) > 0.4;
+    canReposition &&
+    !dragging &&
+    !playing &&
+    !nudgeCooldown &&
+    Math.abs(value - frozenAt) > 0.4;
   const atMin = value <= 0;
   const atMax = value >= max;
 
@@ -228,8 +241,8 @@ export function ContextScrubber({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          gap: "4px",
-          marginTop: "6px",
+          gap: "8px",
+          marginTop: "var(--gap-md)",
         }}
       >
         <button

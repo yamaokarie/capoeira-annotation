@@ -34,20 +34,6 @@ export function DoneScreen({
         <SavedCheck key={phase} />
       </div>
 
-      <div
-        style={{
-          fontFamily: "var(--font-kicker)",
-          fontSize: "12px",
-          fontWeight: 600,
-          letterSpacing: "2px",
-          textTransform: "uppercase",
-          color: "var(--on-dark-soft)",
-          marginBottom: "8px",
-        }}
-      >
-        Moment Capture
-      </div>
-
       <h1
         style={{
           fontFamily: "var(--font-display)",
@@ -100,6 +86,12 @@ export function DoneScreen({
           fontSize: "17px",
           color: "var(--on-dark-soft)",
           margin: 0,
+          // At least 16px clear of the footer's Back to Jogo button below —
+          // on mobile the footer is fixed to the viewport bottom (see
+          // CaptureFooter.tsx), out of flow, so this space comes from
+          // pushing this paragraph's own trailing edge up via marginBottom
+          // rather than from the footer's position.
+          marginBottom: "var(--gap-md)",
         }}
       >
         Your annotation has been recorded.

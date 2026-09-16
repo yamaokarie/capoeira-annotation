@@ -240,11 +240,11 @@ export default function Home() {
         ? "var(--top-clearance-video)"
         : "var(--top-clearance)";
 
-  // Desktop-only (see .capture-topbar-back in globals.css) — mirrors each
-  // capture screen's own inline back button, whose handler is otherwise
-  // only known to that screen's own props. Why's "back" is actually a
-  // cancel-back-to-Playing (same as the X button), matching WhyScreen's
-  // own onBack; the rest step back one capture phase.
+  // Desktop-only (see .capture-topbar-back in globals.css) — drives
+  // CaptureTopbar's "back" variant, the only back button left in the
+  // capture flow (see the 2026-09-16 CLAUDE.md entry). Why's "back" is
+  // actually a cancel-back-to-Playing (same as the X button); the rest
+  // step back one capture phase.
   const topbarOnBack =
     captureState.phase === "why"
       ? handleCancel
@@ -309,7 +309,7 @@ export default function Home() {
         frozenAt={captureState.frozenAt}
         onFreeze={captureState.phase === "playing" ? handleFreeze : undefined}
         onPlayStateChange={setVideoPlaying}
-        variant={captureState.phase === "why" ? "card" : "default"}
+        variant={captureState.phase === "playing" ? "default" : "card"}
       />
       {captureState.frozenAt !== null && (
         <ContextScrubber
@@ -319,6 +319,11 @@ export default function Home() {
           onSeek={handleSeek}
           playing={videoPlaying}
           onRepositionFreeze={handleRepositionFreeze}
+          // Only Why lets the user move the frozen moment — Surprising/
+          // Tags/Ending/Done keep the video+scrubber mounted for
+          // continuity, but it's preview-only there (see ContextScrubber's
+          // canReposition doc).
+          canReposition={captureState.phase === "why"}
         />
       )}
     </>
@@ -348,7 +353,6 @@ export default function Home() {
           onWhyTextChange={(text) => captureState.updateAnswer("whyText", text)}
           onTranscriptChange={(transcript) => captureState.updateAnswer("transcript", transcript)}
           onAudioRecorded={setAudioBlob}
-          onBack={handleCancel}
           onNext={() => captureState.setPhase("surprising")}
         />
       )}
@@ -357,7 +361,6 @@ export default function Home() {
         <SurprisingScreen
           surprising={captureState.answers.surprising}
           onSurprisingChange={(value) => captureState.updateAnswer("surprising", value)}
-          onBack={() => captureState.setPhase("why")}
           onNext={() => captureState.setPhase("tags")}
         />
       )}
@@ -374,7 +377,6 @@ export default function Home() {
                 : [...current, value]
             );
           }}
-          onBack={() => captureState.setPhase("surprising")}
           onNext={() => captureState.setPhase("ending")}
         />
       )}
@@ -383,7 +385,6 @@ export default function Home() {
         <EndingScreen
           endingType={captureState.answers.endingType}
           onEndingTypeChange={(value) => captureState.updateAnswer("endingType", value)}
-          onBack={() => captureState.setPhase("tags")}
           onSave={handleSaveMoment}
           saving={saving}
           saveError={saveError}
@@ -424,17 +425,92 @@ export default function Home() {
       {isDesktop ? (
         <div className="capture-shell">
           <div className="capture-shell-video">
-            {videoNode}
-            {/* Playing's whole phaseNode is transport controls (speed/
-                skip/play/scrub) for the video above it — on desktop they
-                belong directly under the video, not in the otherwise-empty
-                right-hand panel (where every other phase's phaseNode is
-                genuinely separate capture UI, not video-adjacent). */}
-            {captureState.phase === "playing" && phaseNode}
+            {/* Why/Surprising/Tags/Ending only: back button moves here,
+                left-aligned to the video column, instead of the right-hand
+                panel — see the 2026-09-16 CLAUDE.md entries. Kept out of
+                the centered media wrapper below so it stays pinned to the
+                column's top-left regardless of video height. */}
+            {isCapturePhase && (
+              <CaptureTopbar variant="back" onCancel={handleCancel} onBack={topbarOnBack} />
+            )}
+            <div
+              className="capture-shell-video-media"
+              style={
+                isCapturePhase
+                  ? {
+                      // Why/Surprising/Tags/Ending only: top-aligned instead
+                      // of vertically centered, so the badge+video block
+                      // lines up with the right-hand panel's headline (which
+                      // has always just flowed from the top) rather than
+                      // floating in the middle of the column — see the
+                      // 2026-09-16 CLAUDE.md entry. Playing/Done (this style
+                      // override doesn't apply to them) keep centering,
+                      // unchanged.
+                      justifyContent: "flex-start",
+                      // 24px on top of the back button row's own 16px
+                      // marginBottom, for more breathing room between the
+                      // back button and the Frozen badge below it.
+                      marginTop: "24px",
+                    }
+                  : undefined
+              }
+            >
+              {/* The Frozen badge itself sits inside the centered media
+                  wrapper, immediately above the video — 24px gap, flush
+                  with the video frame's own left edge — rather than pinned
+                  to the column's top like the back button above, so it
+                  travels with the video instead of floating independently
+                  of it. Replicates YouTubePlayer.tsx's own full-bleed
+                  cancellation of --side-padding-video (so this wrapper's
+                  left edge lines up with the video's outer edge), plus the
+                  "card" variant's own 14px left inset and extra vertical
+                  offset — every isCapturePhase screen (Why/Surprising/Tags/
+                  Ending) now renders YouTubePlayer's "card" variant (the
+                  "default" variant's corner brackets/opaque bands were
+                  removed from everywhere but Playing), so the same 14px/6px
+                  values apply to all of them, not just Why. Measured
+                  in-browser (Playwright) against the "card" variant's actual
+                  rendered video box to land on exactly 24px of visible gap
+                  and 0px of left offset, rather than trusting the
+                  arithmetic alone. */}
+              {isCapturePhase && (
+                <div
+                  style={{
+                    width: "calc(100% + 2 * var(--side-padding-video))",
+                    marginLeft: "calc(-1 * var(--side-padding-video))",
+                    paddingLeft: "14px",
+                    marginBottom: "6px",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <CaptureTopbar
+                    variant="frozenBadge"
+                    frozenAt={captureState.frozenAt}
+                    formatTime={videoPlayer.formatPreciseTime}
+                    onCancel={handleCancel}
+                  />
+                </div>
+              )}
+              {videoNode}
+              {/* Playing's whole phaseNode is transport controls (speed/
+                  skip/play/scrub) for the video above it — on desktop they
+                  belong directly under the video, not in the otherwise-empty
+                  right-hand panel (where every other phase's phaseNode is
+                  genuinely separate capture UI, not video-adjacent). */}
+              {captureState.phase === "playing" && phaseNode}
+            </div>
           </div>
           <div className="capture-shell-panel">
-            {topbarNode}
-            {captureState.phase !== "playing" && phaseNode}
+            {isCapturePhase ? <CaptureTopbar variant="close" onCancel={handleCancel} /> : topbarNode}
+            {/* isCapturePhase only: 40px (24px + a later +16px) further
+                down than the close button's own row, so the panel's
+                headline sits below the video column's Frozen badge instead
+                of exactly flush with it — see the 2026-09-16 CLAUDE.md
+                entries. Done (not isCapturePhase) keeps flowing directly
+                under its own (absent) topbar, unaffected. */}
+            {captureState.phase !== "playing" && (
+              <div style={{ marginTop: isCapturePhase ? "40px" : undefined }}>{phaseNode}</div>
+            )}
           </div>
         </div>
       ) : (

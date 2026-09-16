@@ -23,7 +23,6 @@ interface WhyScreenProps {
   onWhyTextChange: (text: string) => void;
   onTranscriptChange: (transcript: string) => void;
   onAudioRecorded: (blob: Blob | null) => void;
-  onBack: () => void;
   onNext: () => void;
 }
 
@@ -39,7 +38,6 @@ export function WhyScreen({
   onWhyTextChange,
   onTranscriptChange,
   onAudioRecorded,
-  onBack,
   onNext,
 }: WhyScreenProps) {
   const [recState, setRecState] = useState<RecState>(transcript ? "done" : "idle");
@@ -468,33 +466,10 @@ export function WhyScreen({
         </div>
       )}
 
-      <div style={{ marginTop: "var(--gap-lg)", display: "flex", gap: "var(--gap-sm)" }}>
-        <button
-          className="icon-btn capture-inline-back"
-          onClick={onBack}
-          aria-label="Back to playing"
-          style={{
-            width: "var(--height-circular)",
-            height: "var(--height-circular)",
-            flex: "0 0 auto",
-            borderRadius: "var(--radius-pill)",
-            backgroundColor: "transparent",
-            border: "1px solid var(--hairline-strong)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-          }}
-        >
-          <span style={{ display: "inline-flex", transform: "rotate(180deg)" }}>
-            <ArrowIcon size={17} color="var(--on-dark)" />
-          </span>
-        </button>
-        <div style={{ flex: 1 }}>
-          <PillButton onClick={onNext} disabled={!canContinue}>
-            Continue <ArrowIcon size={17} color="#0c0a09" />
-          </PillButton>
-        </div>
+      <div style={{ marginTop: "var(--gap-lg)" }}>
+        <PillButton onClick={onNext} disabled={!canContinue}>
+          Continue <ArrowIcon size={17} color="#0c0a09" />
+        </PillButton>
       </div>
     </div>
   );

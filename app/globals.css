@@ -13,10 +13,6 @@
   --accent: #ebc14b;
   --hairline-light: rgba(255, 255, 255, 0.16);
   --hairline-strong: rgba(255, 255, 255, 0.3);
-  /* Light-background counterparts, used by SelectVideoScreen's desktop
-     (>=1024px) light-wash layout — see .svs-* desktop overrides below. */
-  --hairline-dark: rgba(12, 10, 9, 0.14);
-  --hairline-dark-strong: rgba(12, 10, 9, 0.3);
 
   --cream: #f5f5f5;
   --peach: #f4c5a8;
@@ -310,18 +306,29 @@ body {
      YouTubePlayer and ContextScrubber (see videoNode in page.tsx), which
      need to stack vertically (video, then scrubber below it) rather than
      split the row side by side — flex's default row direction was doing
-     the latter. justify-content centers the pair as a group on the
-     (now-vertical) main axis; align-items stays the column-direction
-     default (stretch), which is what lets each child's own width:100%
-     actually reach full column width. */
+     the latter. align-items stays the column-direction default (stretch),
+     which is what lets each child's own width:100% actually reach full
+     column width. */
   flex-direction: column;
-  justify-content: center;
   /* Not a visual choice — YouTubePlayer/ContextScrubber cancel their
      parent's --side-padding-video via a negative margin to go full-bleed.
      Without this padding here for them to cancel, they'd overflow this
      column by 2 * --side-padding-video. */
   padding: 0 var(--side-padding-video);
   box-sizing: border-box;
+}
+/* Wraps YouTubePlayer/ContextScrubber (and Playing's transport controls)
+   so they stay vertically centered in the column even once the back
+   button + Frozen badge (Why/Surprising/Tags/Ending only, see page.tsx)
+   sit above as a top-pinned sibling instead of being centered as part of
+   the same group. min-height:0 lets this flex child actually shrink
+   inside the shell's min-height:100vh column instead of overflowing it. */
+.capture-shell-video-media {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 .capture-shell-panel {
   display: flex;
@@ -389,27 +396,15 @@ body {
   }
 }
 
-/* Back-button relocation, desktop (>=1024px) only. Below 1024px each
-   capture screen's own inline back button (next to its Continue/Skip/
-   Save action) is the only one shown — .capture-topbar-back stays
-   display:none there. At desktop it swaps: the inline one hides and an
-   equivalent button appears grouped with the Frozen badge at the top of
-   the panel instead (see CaptureTopbar.tsx), matching where a "back"
-   control reads more naturally once it's no longer sharing a row with
-   the primary action. */
+/* CaptureTopbar.tsx's "back"/"full" variants' own back button. Now the
+   only back button in the capture flow at every width — the mobile inline
+   one next to Continue/Skip/Save was removed 2026-09-16, which briefly
+   left mobile with no way back at all (this button was mistakenly
+   display:none there); restored the same day. !important: the button's
+   own inline style sets display:flex (to center its icon), which
+   otherwise beats a plain class rule regardless of specificity. */
 .capture-topbar-back {
-  display: none;
-}
-@media (min-width: 1024px) {
-  .capture-topbar-back {
-    display: flex;
-  }
-  /* !important: each screen sets display:flex inline on this same
-     button (to center its icon), which otherwise beats any plain class
-     rule regardless of media-query specificity. */
-  .capture-inline-back {
-    display: none !important;
-  }
+  display: flex !important;
 }
 
 /* Custom-styled native range input — thin track + white thumb,
@@ -534,12 +529,13 @@ body {
 /* Entry / video-selection screen (SelectVideoScreen) — scoped to svs-*,
    does not affect any other screen. */
 .svs-page {
+  position: relative;
   min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 32px 16px;
-  background: radial-gradient(circle at 50% 20%, #ffffff, #f5f5f5 65%);
+  background: var(--ink);
 }
 
 .svs-card {
@@ -559,7 +555,6 @@ body {
   .svs-page {
     padding: 0;
     align-items: stretch;
-    background: var(--ink);
   }
   .svs-card {
     width: 100%;
@@ -870,12 +865,16 @@ body {
 
 /* Desktop (>=1024px): SelectVideoScreen drops the centered 412x880 dark
    card and becomes a full-bleed two-column layout sitting directly on
-   .svs-page's light radial-wash background — left column is the
-   header + name field (.svs-header/.svs-name-section), right column is
-   the jogo list + bring-your-own row (.svs-scroll). Everything below
-   1024px (including the 520-1024px centered-card range and the <=520px
-   full-bleed dark range) is untouched by this block. */
+   .svs-page's dark background (same var(--ink) + blurred orbs texture as
+   mobile) — left column is the header + name field (.svs-header/
+   .svs-name-section), right column is the jogo list + bring-your-own row
+   (.svs-scroll). Everything below 1024px (including the 520-1024px
+   centered-card range and the <=520px full-bleed range) is untouched by
+   this block. */
 @media (min-width: 1024px) {
+  .svs-page {
+    overflow: hidden;
+  }
   .svs-card {
     position: static;
     width: 100%;
@@ -886,14 +885,6 @@ body {
     background: transparent;
     box-shadow: none;
     overflow: visible;
-  }
-
-  /* mix-blend-mode: screen lightens against what's behind it — on the
-     dark card that makes the orbs glow, but on this light background it
-     washes them out to near-invisible. Simplest correct fix: don't show
-     them on this layout. */
-  .svs-orbs {
-    display: none;
   }
 
   .svs-content {
@@ -921,65 +912,5 @@ body {
     flex: none;
     overflow-y: visible;
     padding-bottom: 0;
-  }
-
-  /* Recolor pass: every .svs-* rule below was written against the dark
-     card background (--on-dark/--on-dark-soft/--hairline-light/
-     --hairline-strong), which doesn't work on the light wash. --soft is
-     the light-background equivalent of --on-dark-soft (same value,
-     previously unused) — see design tokens above. */
-  .svs-headline,
-  .svs-name-input {
-    color: var(--ink);
-  }
-  .svs-kicker,
-  .svs-section-label,
-  .svs-jogo-meta {
-    color: var(--soft);
-  }
-  .svs-subhead {
-    color: color-mix(in srgb, var(--ink) 65%, transparent);
-  }
-  .svs-name-input {
-    border-bottom-color: var(--hairline-dark-strong);
-  }
-  .svs-name-input:focus {
-    border-bottom-color: var(--ink);
-  }
-  .svs-name-input::placeholder {
-    color: var(--soft);
-  }
-  .svs-jogo-card {
-    background: rgba(12, 10, 9, 0.03);
-    border-color: var(--hairline-dark);
-  }
-  .svs-jogo-title {
-    color: var(--ink);
-  }
-  .svs-thumb-placeholder {
-    background: repeating-linear-gradient(
-      135deg,
-      rgba(12, 10, 9, 0.05) 0 8px,
-      rgba(12, 10, 9, 0.02) 8px 16px
-    );
-  }
-  .svs-own-row {
-    border-color: var(--hairline-dark-strong);
-  }
-  .svs-own-row:focus-within {
-    border-color: var(--ink);
-  }
-  .svs-url-input {
-    color: var(--ink);
-  }
-  .svs-url-input::placeholder {
-    color: var(--soft);
-  }
-  .svs-add-pill {
-    color: var(--ink);
-    border-color: var(--hairline-dark-strong);
-  }
-  .svs-status-message {
-    color: var(--soft);
   }
 }

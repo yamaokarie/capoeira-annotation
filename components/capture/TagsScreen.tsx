@@ -8,11 +8,10 @@ import { CaptureFooter } from "@/components/capture/CaptureFooter";
 interface TagsScreenProps {
   selectedTags: string[];
   onToggleTag: (value: string) => void;
-  onBack: () => void;
   onNext: () => void;
 }
 
-export function TagsScreen({ selectedTags, onToggleTag, onBack, onNext }: TagsScreenProps) {
+export function TagsScreen({ selectedTags, onToggleTag, onNext }: TagsScreenProps) {
   const [lastTapped, setLastTapped] = useState<string | null>(null);
   const activeDefinition = TAGS.find((tag) => tag.value === lastTapped)?.definition;
 
@@ -68,38 +67,15 @@ export function TagsScreen({ selectedTags, onToggleTag, onBack, onNext }: TagsSc
       </p>
 
       <CaptureFooter>
-        <button
-          className="icon-btn capture-inline-back"
-          onClick={onBack}
-          aria-label="Back to why screen"
-          style={{
-            width: "var(--height-circular)",
-            height: "var(--height-circular)",
-            flex: "0 0 auto",
-            borderRadius: "var(--radius-pill)",
-            backgroundColor: "transparent",
-            border: "1px solid var(--hairline-strong)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-          }}
-        >
-          <span style={{ display: "inline-flex", transform: "rotate(180deg)" }}>
-            <ArrowIcon size={17} color="var(--on-dark)" />
-          </span>
-        </button>
-        <div style={{ flex: 1 }}>
-          <PillButton onClick={onNext}>
-            {selectedTags.length > 0 ? (
-              <>
-                Continue <ArrowIcon size={17} color="#0c0a09" />
-              </>
-            ) : (
-              "Skip"
-            )}
-          </PillButton>
-        </div>
+        <PillButton onClick={onNext}>
+          {selectedTags.length > 0 ? (
+            <>
+              Continue <ArrowIcon size={17} color="#0c0a09" />
+            </>
+          ) : (
+            "Skip"
+          )}
+        </PillButton>
       </CaptureFooter>
     </div>
   );
