@@ -470,7 +470,7 @@ export function WhyScreen({
 
       <div style={{ marginTop: "var(--gap-lg)", display: "flex", gap: "var(--gap-sm)" }}>
         <button
-          className="icon-btn"
+          className="icon-btn capture-inline-back"
           onClick={onBack}
           aria-label="Back to playing"
           style={{

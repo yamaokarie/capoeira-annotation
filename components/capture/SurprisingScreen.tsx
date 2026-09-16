@@ -44,7 +44,7 @@ export function SurprisingScreen({
 
       <CaptureFooter>
         <button
-          className="icon-btn"
+          className="icon-btn capture-inline-back"
           onClick={onBack}
           aria-label="Back to why screen"
           style={{

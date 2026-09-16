@@ -91,7 +91,7 @@ export function EndingScreen({
 
       <CaptureFooter>
         <button
-          className="icon-btn"
+          className="icon-btn capture-inline-back"
           onClick={onBack}
           aria-label="Back to tags screen"
           style={{

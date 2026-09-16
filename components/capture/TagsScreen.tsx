@@ -69,7 +69,7 @@ export function TagsScreen({ selectedTags, onToggleTag, onBack, onNext }: TagsSc
 
       <CaptureFooter>
         <button
-          className="icon-btn"
+          className="icon-btn capture-inline-back"
           onClick={onBack}
           aria-label="Back to why screen"
           style={{

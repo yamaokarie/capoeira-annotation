@@ -240,12 +240,29 @@ export default function Home() {
         ? "var(--top-clearance-video)"
         : "var(--top-clearance)";
 
+  // Desktop-only (see .capture-topbar-back in globals.css) — mirrors each
+  // capture screen's own inline back button, whose handler is otherwise
+  // only known to that screen's own props. Why's "back" is actually a
+  // cancel-back-to-Playing (same as the X button), matching WhyScreen's
+  // own onBack; the rest step back one capture phase.
+  const topbarOnBack =
+    captureState.phase === "why"
+      ? handleCancel
+      : captureState.phase === "surprising"
+        ? () => captureState.setPhase("why")
+        : captureState.phase === "tags"
+          ? () => captureState.setPhase("surprising")
+          : captureState.phase === "ending"
+            ? () => captureState.setPhase("tags")
+            : undefined;
+
   const topbarNode = showTopControls ? (
     isCapturePhase ? (
       <CaptureTopbar
         frozenAt={captureState.frozenAt}
         formatTime={videoPlayer.formatPreciseTime}
         onCancel={handleCancel}
+        onBack={topbarOnBack}
       />
     ) : captureState.phase === "playing" ? (
       <div

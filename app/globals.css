@@ -389,6 +389,29 @@ body {
   }
 }
 
+/* Back-button relocation, desktop (>=1024px) only. Below 1024px each
+   capture screen's own inline back button (next to its Continue/Skip/
+   Save action) is the only one shown — .capture-topbar-back stays
+   display:none there. At desktop it swaps: the inline one hides and an
+   equivalent button appears grouped with the Frozen badge at the top of
+   the panel instead (see CaptureTopbar.tsx), matching where a "back"
+   control reads more naturally once it's no longer sharing a row with
+   the primary action. */
+.capture-topbar-back {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .capture-topbar-back {
+    display: flex;
+  }
+  /* !important: each screen sets display:flex inline on this same
+     button (to center its icon), which otherwise beats any plain class
+     rule regardless of media-query specificity. */
+  .capture-inline-back {
+    display: none !important;
+  }
+}
+
 /* Custom-styled native range input — thin track + white thumb,
    matching design_handoff_capoeira_annotation's Scrubber component.
    Padding + content-box clipping (2026-09-10) gives this a larger
