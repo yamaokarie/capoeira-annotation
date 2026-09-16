@@ -17,7 +17,7 @@ export function SurprisingScreen({
   onNext,
 }: SurprisingScreenProps) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", paddingBottom: "88px" }}>
+    <div className="capture-screen-root">
       <h1
         style={{
           fontSize: "24px",

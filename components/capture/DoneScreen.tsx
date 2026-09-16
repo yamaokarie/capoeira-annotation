@@ -1,7 +1,19 @@
+import type { CSSProperties } from "react";
 import { PillButton } from "@/components/ui/Button";
 import { SavedCheck } from "@/components/ui/SavedCheck";
 import { CaptureFooter } from "@/components/capture/CaptureFooter";
 import type { CapturePhase } from "@/lib/types";
+
+// --capture-footer-clearance is read by the shared .capture-screen-root
+// class (globals.css) to override its default 88px CaptureFooter
+// clearance — Done's footer holds two stacked buttons instead of one row,
+// so it needs more room below the content.
+const rootStyle: CSSProperties = {
+  alignItems: "center",
+  textAlign: "center",
+  paddingTop: "48px",
+  ["--capture-footer-clearance" as string]: "140px",
+};
 
 interface DoneScreenProps {
   phase?: CapturePhase;
@@ -17,16 +29,7 @@ export function DoneScreen({
   onAnnotateNewVideo,
 }: DoneScreenProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        textAlign: "center",
-        paddingTop: "48px",
-        paddingBottom: "140px",
-      }}
-    >
+    <div className="capture-screen-root" style={rootStyle}>
       <div style={{ marginBottom: "48px" }}>
         <SavedCheck key={phase} />
       </div>

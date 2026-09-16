@@ -16,11 +16,13 @@ import { CaptureTopbar } from "@/components/capture/CaptureTopbar";
 import { CloseIcon } from "@/components/ui/icons";
 import { useCaptureState } from "@/hooks/useCaptureState";
 import { useVideoPlayer } from "@/hooks/useVideoPlayer";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 import type { Video } from "@/lib/types";
 
 export default function Home() {
   const captureState = useCaptureState();
   const videoPlayer = useVideoPlayer();
+  const isDesktop = useIsDesktop();
   const playerRef = useRef<YouTubePlayerHandle>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [videosLoading, setVideosLoading] = useState(true);
@@ -39,14 +41,18 @@ export default function Home() {
 
   // "why", "surprising", "tags", and "ending" are all the dark, orb-backed
   // capture screens; "surprising"/"tags"/"ending" are text-only (no video/
-  // timeline), so they're excluded from `showVideo` below.
+  // timeline) below 1024px, so they're excluded from `showVideo` there.
   const isCapturePhase =
     captureState.phase === "why" ||
     captureState.phase === "surprising" ||
     captureState.phase === "tags" ||
     captureState.phase === "ending";
+  // At desktop widths every non-select phase gets a video column (see the
+  // two-column capture-shell layout below) — this function only ever runs
+  // past the `phase === "select"` early return, so `isDesktop` alone
+  // correctly means "all six remaining phases" once true.
   const showVideo =
-    captureState.phase === "playing" || captureState.phase === "why";
+    isDesktop || captureState.phase === "playing" || captureState.phase === "why";
   const showTopControls = captureState.phase === "playing" || isCapturePhase;
   // Done gets the same dark background as Playing/why/surprising/tags/ending
   // above, but no CaptureTopbar/video (so it's kept out of isCapturePhase).
@@ -224,7 +230,8 @@ export default function Home() {
   // Playing/Why keep the pre-grid side padding so the video frame's on-screen
   // width stays pixel-identical; Tags/Done (no video on screen) use the new
   // grid values. Why's top clearance is pulled up from Playing's (84px) to
-  // 32px so the typed-input fallback isn't pushed below the fold.
+  // 32px so the typed-input fallback isn't pushed below the fold. Unused at
+  // desktop widths — the capture-shell manages its own padding there.
   const sidePadding = showVideo ? "var(--side-padding-video)" : "var(--side-padding)";
   const topClearance =
     captureState.phase === "why"
@@ -233,11 +240,162 @@ export default function Home() {
         ? "var(--top-clearance-video)"
         : "var(--top-clearance)";
 
+  const topbarNode = showTopControls ? (
+    isCapturePhase ? (
+      <CaptureTopbar
+        frozenAt={captureState.frozenAt}
+        formatTime={videoPlayer.formatPreciseTime}
+        onCancel={handleCancel}
+      />
+    ) : captureState.phase === "playing" ? (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          marginBottom: "16px",
+        }}
+      >
+        <button
+          className="icon-btn"
+          onClick={() => captureState.backToSelect()}
+          aria-label="Back to video selection"
+          style={{
+            width: "34px",
+            height: "34px",
+            borderRadius: "50%",
+            border: "1px solid var(--hairline-light)",
+            backgroundColor: "rgba(255, 255, 255, 0.08)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+          }}
+        >
+          <CloseIcon size={16} color="var(--on-dark)" />
+        </button>
+      </div>
+    ) : null
+  ) : null;
+
+  // Deliberately not nested inside `showTopControls` — Done has no topbar
+  // (showTopControls is false for it) but does get a video at desktop
+  // widths (showVideo is true there via `isDesktop`), so video visibility
+  // and topbar visibility are independent above 1024px even though every
+  // phase where they overlap below 1024px (playing, why) happens to have
+  // both true together.
+  const videoNode = showVideo ? (
+    <>
+      <YouTubePlayer
+        ref={playerRef}
+        youtubeId={selectedVideoData.youtubeId}
+        playing={videoPlayer.playing}
+        frozenAt={captureState.frozenAt}
+        onFreeze={captureState.phase === "playing" ? handleFreeze : undefined}
+        onPlayStateChange={setVideoPlaying}
+        variant={captureState.phase === "why" ? "card" : "default"}
+      />
+      {captureState.frozenAt !== null && (
+        <ContextScrubber
+          frozenAt={captureState.frozenAt}
+          duration={duration}
+          value={currentTime}
+          onSeek={handleSeek}
+          playing={videoPlaying}
+          onRepositionFreeze={handleRepositionFreeze}
+        />
+      )}
+    </>
+  ) : null;
+
+  const phaseNode = (
+    <div key={captureState.phase} className="screen-enter">
+      {captureState.phase === "playing" && (
+        <PlayingScreen
+          playing={videoPlayer.playing}
+          onPlayingChange={videoPlayer.setPlaying}
+          currentTime={currentTime}
+          duration={duration}
+          onSeek={handleSeek}
+          onSkip={handleSkip}
+          onSetPlaybackRate={(rate) => playerRef.current?.setPlaybackRate(rate)}
+          formatTime={videoPlayer.formatTime}
+        />
+      )}
+
+      {captureState.phase === "why" && (
+        <WhyScreen
+          whyMode={captureState.answers.whyMode}
+          whyText={captureState.answers.whyText}
+          transcript={captureState.answers.transcript}
+          onWhyModeChange={(mode) => captureState.updateAnswer("whyMode", mode)}
+          onWhyTextChange={(text) => captureState.updateAnswer("whyText", text)}
+          onTranscriptChange={(transcript) => captureState.updateAnswer("transcript", transcript)}
+          onAudioRecorded={setAudioBlob}
+          onBack={handleCancel}
+          onNext={() => captureState.setPhase("surprising")}
+        />
+      )}
+
+      {captureState.phase === "surprising" && (
+        <SurprisingScreen
+          surprising={captureState.answers.surprising}
+          onSurprisingChange={(value) => captureState.updateAnswer("surprising", value)}
+          onBack={() => captureState.setPhase("why")}
+          onNext={() => captureState.setPhase("tags")}
+        />
+      )}
+
+      {captureState.phase === "tags" && (
+        <TagsScreen
+          selectedTags={captureState.answers.tags}
+          onToggleTag={(value) => {
+            const current = captureState.answers.tags;
+            captureState.updateAnswer(
+              "tags",
+              current.includes(value)
+                ? current.filter((t) => t !== value)
+                : [...current, value]
+            );
+          }}
+          onBack={() => captureState.setPhase("surprising")}
+          onNext={() => captureState.setPhase("ending")}
+        />
+      )}
+
+      {captureState.phase === "ending" && (
+        <EndingScreen
+          endingType={captureState.answers.endingType}
+          onEndingTypeChange={(value) => captureState.updateAnswer("endingType", value)}
+          onBack={() => captureState.setPhase("tags")}
+          onSave={handleSaveMoment}
+          saving={saving}
+          saveError={saveError}
+        />
+      )}
+
+      {captureState.phase === "done" && captureState.frozenAt !== null && (
+        <DoneScreen
+          phase={captureState.phase}
+          momentLabel={videoPlayer.formatPreciseTime(captureState.frozenAt)}
+          onBackToJogo={() => {
+            captureState.resetForNextMoment();
+            videoPlayer.setPlaying(true);
+            setAudioBlob(null);
+          }}
+          onAnnotateNewVideo={() => {
+            captureState.backToSelect();
+            setAudioBlob(null);
+          }}
+        />
+      )}
+    </div>
+  );
+
   return (
     <div
       style={{
-        padding: sidePadding,
-        paddingTop: topClearance,
+        padding: isDesktop ? 0 : sidePadding,
+        paddingTop: isDesktop ? 0 : topClearance,
         minHeight: "100vh",
         position: "relative",
         overflow: "hidden",
@@ -246,161 +404,25 @@ export default function Home() {
     >
       {showOrbs && <GradientOrbs />}
 
-      <div style={{ position: "relative" }}>
-        {showTopControls && (
-          <>
-            {isCapturePhase ? (
-              <CaptureTopbar
-                frozenAt={captureState.frozenAt}
-                formatTime={videoPlayer.formatPreciseTime}
-                onCancel={handleCancel}
-              />
-            ) : captureState.phase === "playing" ? (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  marginBottom: "16px",
-                }}
-              >
-                <button
-                  className="icon-btn"
-                  onClick={() => captureState.backToSelect()}
-                  aria-label="Back to video selection"
-                  style={{
-                    width: "34px",
-                    height: "34px",
-                    borderRadius: "50%",
-                    border: "1px solid var(--hairline-light)",
-                    backgroundColor: "rgba(255, 255, 255, 0.08)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                  }}
-                >
-                  <CloseIcon size={16} color="var(--on-dark)" />
-                </button>
-              </div>
-            ) : null}
-
-            {showVideo && (
-              <YouTubePlayer
-                ref={playerRef}
-                youtubeId={selectedVideoData.youtubeId}
-                playing={videoPlayer.playing}
-                frozenAt={captureState.frozenAt}
-                onFreeze={captureState.phase === "playing" ? handleFreeze : undefined}
-                onPlayStateChange={setVideoPlaying}
-                variant={captureState.phase === "why" ? "card" : "default"}
-              />
-            )}
-
-            {showVideo && captureState.frozenAt !== null && (
-              <ContextScrubber
-                frozenAt={captureState.frozenAt}
-                duration={duration}
-                value={currentTime}
-                onSeek={handleSeek}
-                playing={videoPlaying}
-                onRepositionFreeze={handleRepositionFreeze}
-              />
-            )}
-          </>
-        )}
-
-        {captureState.phase === "playing" && (
-          <div key={captureState.phase} className="screen-enter">
-            <PlayingScreen
-              playing={videoPlayer.playing}
-              onPlayingChange={videoPlayer.setPlaying}
-              currentTime={currentTime}
-              duration={duration}
-              onSeek={handleSeek}
-              onSkip={handleSkip}
-              onSetPlaybackRate={(rate) => playerRef.current?.setPlaybackRate(rate)}
-              formatTime={videoPlayer.formatTime}
-            />
+      {isDesktop ? (
+        <div className="capture-shell">
+          <div className="capture-shell-video">{videoNode}</div>
+          <div className="capture-shell-panel">
+            {topbarNode}
+            {phaseNode}
           </div>
-        )}
-
-        {captureState.phase === "why" && (
-          <div key={captureState.phase} className="screen-enter">
-            <WhyScreen
-              whyMode={captureState.answers.whyMode}
-              whyText={captureState.answers.whyText}
-              transcript={captureState.answers.transcript}
-              onWhyModeChange={(mode) => captureState.updateAnswer("whyMode", mode)}
-              onWhyTextChange={(text) => captureState.updateAnswer("whyText", text)}
-              onTranscriptChange={(transcript) => captureState.updateAnswer("transcript", transcript)}
-              onAudioRecorded={setAudioBlob}
-              onBack={handleCancel}
-              onNext={() => captureState.setPhase("surprising")}
-            />
-          </div>
-        )}
-
-        {captureState.phase === "surprising" && (
-          <div key={captureState.phase} className="screen-enter">
-            <SurprisingScreen
-              surprising={captureState.answers.surprising}
-              onSurprisingChange={(value) => captureState.updateAnswer("surprising", value)}
-              onBack={() => captureState.setPhase("why")}
-              onNext={() => captureState.setPhase("tags")}
-            />
-          </div>
-        )}
-
-        {captureState.phase === "tags" && (
-          <div key={captureState.phase} className="screen-enter">
-            <TagsScreen
-              selectedTags={captureState.answers.tags}
-              onToggleTag={(value) => {
-                const current = captureState.answers.tags;
-                captureState.updateAnswer(
-                  "tags",
-                  current.includes(value)
-                    ? current.filter((t) => t !== value)
-                    : [...current, value]
-                );
-              }}
-              onBack={() => captureState.setPhase("surprising")}
-              onNext={() => captureState.setPhase("ending")}
-            />
-          </div>
-        )}
-
-        {captureState.phase === "ending" && (
-          <div key={captureState.phase} className="screen-enter">
-            <EndingScreen
-              endingType={captureState.answers.endingType}
-              onEndingTypeChange={(value) => captureState.updateAnswer("endingType", value)}
-              onBack={() => captureState.setPhase("tags")}
-              onSave={handleSaveMoment}
-              saving={saving}
-              saveError={saveError}
-            />
-          </div>
-        )}
-
-        {captureState.phase === "done" && captureState.frozenAt !== null && (
-          <div key={captureState.phase} className="screen-enter">
-            <DoneScreen
-              phase={captureState.phase}
-              momentLabel={videoPlayer.formatPreciseTime(captureState.frozenAt)}
-              onBackToJogo={() => {
-                captureState.resetForNextMoment();
-                videoPlayer.setPlaying(true);
-                setAudioBlob(null);
-              }}
-              onAnnotateNewVideo={() => {
-                captureState.backToSelect();
-                setAudioBlob(null);
-              }}
-            />
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div style={{ position: "relative" }}>
+          {showTopControls && (
+            <>
+              {topbarNode}
+              {videoNode}
+            </>
+          )}
+          {phaseNode}
+        </div>
+      )}
     </div>
   );
 }

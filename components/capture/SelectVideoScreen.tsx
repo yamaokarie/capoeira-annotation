@@ -103,21 +103,26 @@ export function SelectVideoScreen({
             </p>
           </div>
 
-          <div className="svs-scroll">
-            <section className="svs-section">
-              <div className="svs-section-label">Who&rsquo;s annotating</div>
-              <div className="svs-name-field">
-                <input
-                  className="svs-name-input"
-                  type="text"
-                  placeholder="Your name"
-                  value={annotatorName}
-                  onChange={(e) => onAnnotatorNameChange(e.target.value)}
-                />
-                <span aria-hidden className="svs-name-caret" />
-              </div>
-            </section>
+          {/* A direct sibling of .svs-header/.svs-scroll (not nested inside
+              .svs-scroll like the other two sections below) so the desktop
+              (>=1024px) layout can grid-place it into its own left-column
+              area independently of the jogo list — see .svs-content's
+              grid-template-areas in globals.css. */}
+          <section className="svs-section svs-name-section">
+            <div className="svs-section-label">Who&rsquo;s annotating</div>
+            <div className="svs-name-field">
+              <input
+                className="svs-name-input"
+                type="text"
+                placeholder="Your name"
+                value={annotatorName}
+                onChange={(e) => onAnnotatorNameChange(e.target.value)}
+              />
+              <span aria-hidden className="svs-name-caret" />
+            </div>
+          </section>
 
+          <div className="svs-scroll">
             <section className="svs-section">
               <div className="svs-section-label">Pick a jogo</div>
               {loading ? (

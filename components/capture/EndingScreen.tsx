@@ -26,7 +26,7 @@ export function EndingScreen({
   const activeDefinition = ENDING_TYPES.find((ending) => ending.value === lastTapped)?.definition;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", paddingBottom: "88px" }}>
+    <div className="capture-screen-root">
       <h1
         style={{
           fontSize: "24px",

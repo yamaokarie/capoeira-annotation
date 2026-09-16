@@ -290,6 +290,105 @@ body {
   }
 }
 
+/* Desktop (>=1024px) two-column capture shell — used by app/page.tsx for
+   every non-select phase (Playing/Why/Surprising/Tags/Ending/Done). Below
+   1024px these rules don't apply; page.tsx renders its original
+   single-column mobile markup instead. */
+.capture-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--capture-shell-panel-width);
+  gap: var(--gap-3xl);
+  max-width: var(--capture-shell-max-width);
+  min-height: 100vh;
+  margin: 0 auto;
+  align-items: stretch;
+  padding: var(--gap-3xl) var(--gap-xl);
+}
+.capture-shell-video {
+  display: flex;
+  /* Column, not row: on phases with a frozen moment this holds both
+     YouTubePlayer and ContextScrubber (see videoNode in page.tsx), which
+     need to stack vertically (video, then scrubber below it) rather than
+     split the row side by side — flex's default row direction was doing
+     the latter. justify-content centers the pair as a group on the
+     (now-vertical) main axis; align-items stays the column-direction
+     default (stretch), which is what lets each child's own width:100%
+     actually reach full column width. */
+  flex-direction: column;
+  justify-content: center;
+  /* Not a visual choice — YouTubePlayer/ContextScrubber cancel their
+     parent's --side-padding-video via a negative margin to go full-bleed.
+     Without this padding here for them to cancel, they'd overflow this
+     column by 2 * --side-padding-video. */
+  padding: 0 var(--side-padding-video);
+  box-sizing: border-box;
+}
+.capture-shell-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Shared root wrapper for Surprising/Tags/Ending/Done, which each pin a
+   CaptureFooter to the bottom. Mobile values match what each screen
+   hardcoded inline before this was factored out here.
+   --capture-footer-clearance lets an individual screen (Done) override the
+   default bottom padding via an inline custom-property. */
+.capture-screen-root {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--capture-footer-clearance, 88px);
+}
+@media (min-width: 1024px) {
+  .capture-screen-root {
+    height: 100%;
+  }
+}
+
+/* Back/primary button row shared by Surprising/Tags/Ending/Done
+   (CaptureFooter.tsx). Fixed to the viewport bottom on mobile so its
+   position doesn't depend on content height above it; scoped to the
+   capture-shell's right-hand panel column at desktop instead (see
+   .capture-shell-panel above), pinned via margin-top:auto rather than
+   position:fixed so it never has to track the panel's width/offset. */
+.capture-footer-outer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 16px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.capture-footer-inner {
+  width: 100%;
+  max-width: 412px;
+  box-sizing: border-box;
+  padding: 0 var(--side-padding);
+  display: flex;
+  gap: var(--gap-sm);
+  pointer-events: auto;
+}
+@media (min-width: 1024px) {
+  .capture-footer-outer {
+    position: static;
+    display: block;
+    margin-top: auto;
+    /* DoneScreen's root sets align-items:center (to center its checkmark/
+       headline/copy) — without this, that would also shrink-wrap this
+       footer to its content width instead of letting it stretch full
+       width like Surprising/Tags/Ending's footers do (those don't
+       override align-items, so the flex column's default "stretch"
+       already covers them). align-self overrides the parent's
+       align-items for this one item regardless of which case applies. */
+    align-self: stretch;
+  }
+  .capture-footer-inner {
+    max-width: none;
+    padding: 0;
+    width: 100%;
+  }
+}
+
 /* Custom-styled native range input — thin track + white thumb,
    matching design_handoff_capoeira_annotation's Scrubber component.
    Padding + content-box clipping (2026-09-10) gives this a larger
@@ -744,4 +843,120 @@ body {
 .svs-add-pill:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+
+/* Desktop (>=1024px): SelectVideoScreen drops the centered 412x880 dark
+   card and becomes a full-bleed two-column layout sitting directly on
+   .svs-page's light radial-wash background — left column is the
+   header + name field (.svs-header/.svs-name-section), right column is
+   the jogo list + bring-your-own row (.svs-scroll). Everything below
+   1024px (including the 520-1024px centered-card range and the <=520px
+   full-bleed dark range) is untouched by this block. */
+@media (min-width: 1024px) {
+  .svs-card {
+    position: static;
+    width: 100%;
+    height: auto;
+    min-height: 100vh;
+    max-height: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  /* mix-blend-mode: screen lightens against what's behind it — on the
+     dark card that makes the orbs glow, but on this light background it
+     washes them out to near-invisible. Simplest correct fix: don't show
+     them on this layout. */
+  .svs-orbs {
+    display: none;
+  }
+
+  .svs-content {
+    height: auto;
+    min-height: 100vh;
+    max-width: var(--capture-shell-max-width);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    grid-template-areas: "head list" "name list";
+    align-content: center;
+    gap: var(--gap-3xl);
+    padding: var(--gap-3xl) var(--gap-xl);
+  }
+  .svs-header {
+    grid-area: head;
+    margin-bottom: 0;
+  }
+  .svs-name-section {
+    grid-area: name;
+    align-self: start;
+  }
+  .svs-scroll {
+    grid-area: list;
+    flex: none;
+    overflow-y: visible;
+    padding-bottom: 0;
+  }
+
+  /* Recolor pass: every .svs-* rule below was written against the dark
+     card background (--on-dark/--on-dark-soft/--hairline-light/
+     --hairline-strong), which doesn't work on the light wash. --soft is
+     the light-background equivalent of --on-dark-soft (same value,
+     previously unused) — see design tokens above. */
+  .svs-headline,
+  .svs-name-input {
+    color: var(--ink);
+  }
+  .svs-kicker,
+  .svs-section-label,
+  .svs-jogo-meta {
+    color: var(--soft);
+  }
+  .svs-subhead {
+    color: color-mix(in srgb, var(--ink) 65%, transparent);
+  }
+  .svs-name-input {
+    border-bottom-color: var(--hairline-dark-strong);
+  }
+  .svs-name-input:focus {
+    border-bottom-color: var(--ink);
+  }
+  .svs-name-input::placeholder {
+    color: var(--soft);
+  }
+  .svs-jogo-card {
+    background: rgba(12, 10, 9, 0.03);
+    border-color: var(--hairline-dark);
+  }
+  .svs-jogo-title {
+    color: var(--ink);
+  }
+  .svs-thumb-placeholder {
+    background: repeating-linear-gradient(
+      135deg,
+      rgba(12, 10, 9, 0.05) 0 8px,
+      rgba(12, 10, 9, 0.02) 8px 16px
+    );
+  }
+  .svs-own-row {
+    border-color: var(--hairline-dark-strong);
+  }
+  .svs-own-row:focus-within {
+    border-color: var(--ink);
+  }
+  .svs-url-input {
+    color: var(--ink);
+  }
+  .svs-url-input::placeholder {
+    color: var(--soft);
+  }
+  .svs-add-pill {
+    color: var(--ink);
+    border-color: var(--hairline-dark-strong);
+  }
+  .svs-status-message {
+    color: var(--soft);
+  }
 }
