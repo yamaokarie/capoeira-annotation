@@ -71,14 +71,18 @@ interface YouTubePlayerProps {
   // the iframe's native (cross-origin, otherwise invisible-to-us) center
   // button — e.g. resuming playback from a frozen frame on the Why screen.
   onPlayStateChange?: (playing: boolean) => void;
-  // "card": Why screen only — floating inset 16:9 card, cropped iframe
-  // (no chrome-hiding bands), rounded corner ticks. Everything else keeps
-  // the full-bleed frame + opaque bands treatment. See design.md's Video
-  // Frame Treatment section — the "card" crop is a narrower, Why-only
-  // reprise of the scale-crop approach that was tried and reverted there;
-  // it doesn't address YouTube's center resume button (no chrome-hiding
-  // patch over it in this variant — accepted trade-off, revisit if the
-  // native button reads as visible chrome in practice).
+  // "card": floating inset 16:9 card, cropped iframe (no chrome-hiding
+  // bands, no corner brackets). Used on every capture phase except
+  // Playing (Why/Surprising/Tags/Ending) — the "default" variant's opaque
+  // bands + corner-bracket frozen-state marks were reported as an unwanted
+  // old-looking UI and are now scoped to Playing only, which never renders
+  // them anyway (frozenAt is always null there — freezing jumps straight to
+  // the Why phase). See design.md's Video Frame Treatment section — the
+  // "card" crop was originally a Why-only reprise of the scale-crop
+  // approach that was tried and reverted there; it doesn't address
+  // YouTube's center resume button (no chrome-hiding patch over it in this
+  // variant — accepted trade-off, revisit if the native button reads as
+  // visible chrome in practice).
   variant?: "default" | "card";
 }
 
@@ -466,27 +470,49 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
               ))}
 
             {!isCard && (
+              // Larger invisible hit area (44x44, square) around the
+              // visible 32px circle, centered inside via flex so it lands
+              // at the same on-screen spot as before. Tried padding +
+              // content-box + background-clip (the .scrub-input technique)
+              // first, but that keeps the button's own border-radius, and
+              // this browser clips hit-testing to the rounded shape too —
+              // corner taps on the padding still fell through to the
+              // full-frame freeze button underneath. A square (no
+              // border-radius) outer button with a round inner span avoids
+              // that: the full 44x44 box is clickable.
               <button
                 className="icon-btn"
                 onClick={() => setMuted((m) => !m)}
                 aria-label={muted ? "Unmute video" : "Mute video"}
                 style={{
                   position: "absolute",
-                  bottom: "10px",
-                  right: "10px",
-                  width: "32px",
-                  height: "32px",
-                  borderRadius: "var(--radius-pill)",
-                  backgroundColor: "rgba(0, 0, 0, 0.7)",
-                  color: "var(--on-dark)",
+                  bottom: "4px",
+                  right: "4px",
+                  width: "44px",
+                  height: "44px",
+                  background: "none",
                   border: "none",
+                  padding: 0,
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <SpeakerIcon size={16} muted={muted} />
+                <span
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "var(--radius-pill)",
+                    backgroundColor: "rgba(0, 0, 0, 0.7)",
+                    color: "var(--on-dark)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <SpeakerIcon size={16} muted={muted} />
+                </span>
               </button>
             )}
           </div>
@@ -496,21 +522,22 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
               card's edge instead of sitting inset from it. Lives outside the
               clip layer above so the overlap isn't clipped. */}
           {isCard && (
+            // Same square-outer/round-inner touch-target technique as the
+            // non-card button above: larger invisible hit area (50x50)
+            // around the visible 38px pill, centered inside via flex.
             <button
               className="icon-btn"
               onClick={() => setMuted((m) => !m)}
               aria-label={muted ? "Unmute video" : "Mute video"}
               style={{
                 position: "absolute",
-                bottom: "-14px",
-                right: "-14px",
-                width: "38px",
-                height: "38px",
-                borderRadius: "9999px",
-                backgroundColor: "rgba(12, 10, 9, 0.55)",
-                border: "1px solid rgba(255, 255, 255, 0.16)",
-                backdropFilter: "blur(10px)",
-                color: "var(--on-dark)",
+                bottom: "-20px",
+                right: "-20px",
+                width: "50px",
+                height: "50px",
+                background: "none",
+                border: "none",
+                padding: 0,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
@@ -518,7 +545,22 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
                 zIndex: 2,
               }}
             >
-              <SpeakerIcon size={17} muted={muted} />
+              <span
+                style={{
+                  width: "38px",
+                  height: "38px",
+                  borderRadius: "9999px",
+                  backgroundColor: "rgba(12, 10, 9, 0.55)",
+                  border: "1px solid rgba(255, 255, 255, 0.16)",
+                  backdropFilter: "blur(10px)",
+                  color: "var(--on-dark)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <SpeakerIcon size={17} muted={muted} />
+              </span>
             </button>
           )}
         </div>

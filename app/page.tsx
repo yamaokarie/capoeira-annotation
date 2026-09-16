@@ -16,11 +16,13 @@ import { CaptureTopbar } from "@/components/capture/CaptureTopbar";
 import { CloseIcon } from "@/components/ui/icons";
 import { useCaptureState } from "@/hooks/useCaptureState";
 import { useVideoPlayer } from "@/hooks/useVideoPlayer";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 import type { Video } from "@/lib/types";
 
 export default function Home() {
   const captureState = useCaptureState();
   const videoPlayer = useVideoPlayer();
+  const isDesktop = useIsDesktop();
   const playerRef = useRef<YouTubePlayerHandle>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [videosLoading, setVideosLoading] = useState(true);
@@ -39,14 +41,18 @@ export default function Home() {
 
   // "why", "surprising", "tags", and "ending" are all the dark, orb-backed
   // capture screens; "surprising"/"tags"/"ending" are text-only (no video/
-  // timeline), so they're excluded from `showVideo` below.
+  // timeline) below 1024px, so they're excluded from `showVideo` there.
   const isCapturePhase =
     captureState.phase === "why" ||
     captureState.phase === "surprising" ||
     captureState.phase === "tags" ||
     captureState.phase === "ending";
+  // At desktop widths every non-select phase gets a video column (see the
+  // two-column capture-shell layout below) — this function only ever runs
+  // past the `phase === "select"` early return, so `isDesktop` alone
+  // correctly means "all six remaining phases" once true.
   const showVideo =
-    captureState.phase === "playing" || captureState.phase === "why";
+    isDesktop || captureState.phase === "playing" || captureState.phase === "why";
   const showTopControls = captureState.phase === "playing" || isCapturePhase;
   // Done gets the same dark background as Playing/why/surprising/tags/ending
   // above, but no CaptureTopbar/video (so it's kept out of isCapturePhase).
@@ -224,7 +230,8 @@ export default function Home() {
   // Playing/Why keep the pre-grid side padding so the video frame's on-screen
   // width stays pixel-identical; Tags/Done (no video on screen) use the new
   // grid values. Why's top clearance is pulled up from Playing's (84px) to
-  // 32px so the typed-input fallback isn't pushed below the fold.
+  // 32px so the typed-input fallback isn't pushed below the fold. Unused at
+  // desktop widths — the capture-shell manages its own padding there.
   const sidePadding = showVideo ? "var(--side-padding-video)" : "var(--side-padding)";
   const topClearance =
     captureState.phase === "why"
@@ -233,11 +240,180 @@ export default function Home() {
         ? "var(--top-clearance-video)"
         : "var(--top-clearance)";
 
+  // Desktop-only (see .capture-topbar-back in globals.css) — drives
+  // CaptureTopbar's "back" variant, the only back button left in the
+  // capture flow (see the 2026-09-16 CLAUDE.md entry). Why's "back" is
+  // actually a cancel-back-to-Playing (same as the X button); the rest
+  // step back one capture phase.
+  const topbarOnBack =
+    captureState.phase === "why"
+      ? handleCancel
+      : captureState.phase === "surprising"
+        ? () => captureState.setPhase("why")
+        : captureState.phase === "tags"
+          ? () => captureState.setPhase("surprising")
+          : captureState.phase === "ending"
+            ? () => captureState.setPhase("tags")
+            : undefined;
+
+  const topbarNode = showTopControls ? (
+    isCapturePhase ? (
+      <CaptureTopbar
+        frozenAt={captureState.frozenAt}
+        formatTime={videoPlayer.formatPreciseTime}
+        onCancel={handleCancel}
+        onBack={topbarOnBack}
+      />
+    ) : captureState.phase === "playing" ? (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          marginBottom: "16px",
+        }}
+      >
+        <button
+          className="icon-btn"
+          onClick={() => captureState.backToSelect()}
+          aria-label="Back to video selection"
+          style={{
+            width: "34px",
+            height: "34px",
+            borderRadius: "50%",
+            border: "1px solid var(--hairline-light)",
+            backgroundColor: "rgba(255, 255, 255, 0.08)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+          }}
+        >
+          <CloseIcon size={16} color="var(--on-dark)" />
+        </button>
+      </div>
+    ) : null
+  ) : null;
+
+  // Deliberately not nested inside `showTopControls` — Done has no topbar
+  // (showTopControls is false for it) but does get a video at desktop
+  // widths (showVideo is true there via `isDesktop`), so video visibility
+  // and topbar visibility are independent above 1024px even though every
+  // phase where they overlap below 1024px (playing, why) happens to have
+  // both true together.
+  const videoNode = showVideo ? (
+    <>
+      <YouTubePlayer
+        ref={playerRef}
+        youtubeId={selectedVideoData.youtubeId}
+        playing={videoPlayer.playing}
+        frozenAt={captureState.frozenAt}
+        onFreeze={captureState.phase === "playing" ? handleFreeze : undefined}
+        onPlayStateChange={setVideoPlaying}
+        variant={captureState.phase === "playing" ? "default" : "card"}
+      />
+      {captureState.frozenAt !== null && (
+        <ContextScrubber
+          frozenAt={captureState.frozenAt}
+          duration={duration}
+          value={currentTime}
+          onSeek={handleSeek}
+          playing={videoPlaying}
+          onRepositionFreeze={handleRepositionFreeze}
+          // Only Why lets the user move the frozen moment — Surprising/
+          // Tags/Ending/Done keep the video+scrubber mounted for
+          // continuity, but it's preview-only there (see ContextScrubber's
+          // canReposition doc).
+          canReposition={captureState.phase === "why"}
+        />
+      )}
+    </>
+  ) : null;
+
+  const phaseNode = (
+    <div key={captureState.phase} className="screen-enter">
+      {captureState.phase === "playing" && (
+        <PlayingScreen
+          playing={videoPlayer.playing}
+          onPlayingChange={videoPlayer.setPlaying}
+          currentTime={currentTime}
+          duration={duration}
+          onSeek={handleSeek}
+          onSkip={handleSkip}
+          onSetPlaybackRate={(rate) => playerRef.current?.setPlaybackRate(rate)}
+          formatTime={videoPlayer.formatTime}
+        />
+      )}
+
+      {captureState.phase === "why" && (
+        <WhyScreen
+          whyMode={captureState.answers.whyMode}
+          whyText={captureState.answers.whyText}
+          transcript={captureState.answers.transcript}
+          onWhyModeChange={(mode) => captureState.updateAnswer("whyMode", mode)}
+          onWhyTextChange={(text) => captureState.updateAnswer("whyText", text)}
+          onTranscriptChange={(transcript) => captureState.updateAnswer("transcript", transcript)}
+          onAudioRecorded={setAudioBlob}
+          onNext={() => captureState.setPhase("surprising")}
+        />
+      )}
+
+      {captureState.phase === "surprising" && (
+        <SurprisingScreen
+          surprising={captureState.answers.surprising}
+          onSurprisingChange={(value) => captureState.updateAnswer("surprising", value)}
+          onNext={() => captureState.setPhase("tags")}
+        />
+      )}
+
+      {captureState.phase === "tags" && (
+        <TagsScreen
+          selectedTags={captureState.answers.tags}
+          onToggleTag={(value) => {
+            const current = captureState.answers.tags;
+            captureState.updateAnswer(
+              "tags",
+              current.includes(value)
+                ? current.filter((t) => t !== value)
+                : [...current, value]
+            );
+          }}
+          onNext={() => captureState.setPhase("ending")}
+        />
+      )}
+
+      {captureState.phase === "ending" && (
+        <EndingScreen
+          endingType={captureState.answers.endingType}
+          onEndingTypeChange={(value) => captureState.updateAnswer("endingType", value)}
+          onSave={handleSaveMoment}
+          saving={saving}
+          saveError={saveError}
+        />
+      )}
+
+      {captureState.phase === "done" && captureState.frozenAt !== null && (
+        <DoneScreen
+          phase={captureState.phase}
+          momentLabel={videoPlayer.formatPreciseTime(captureState.frozenAt)}
+          onBackToJogo={() => {
+            captureState.resetForNextMoment();
+            videoPlayer.setPlaying(true);
+            setAudioBlob(null);
+          }}
+          onAnnotateNewVideo={() => {
+            captureState.backToSelect();
+            setAudioBlob(null);
+          }}
+        />
+      )}
+    </div>
+  );
+
   return (
     <div
       style={{
-        padding: sidePadding,
-        paddingTop: topClearance,
+        padding: isDesktop ? 0 : sidePadding,
+        paddingTop: isDesktop ? 0 : topClearance,
         minHeight: "100vh",
         position: "relative",
         overflow: "hidden",
@@ -246,161 +422,108 @@ export default function Home() {
     >
       {showOrbs && <GradientOrbs />}
 
-      <div style={{ position: "relative" }}>
-        {showTopControls && (
-          <>
-            {isCapturePhase ? (
-              <CaptureTopbar
-                frozenAt={captureState.frozenAt}
-                formatTime={videoPlayer.formatPreciseTime}
-                onCancel={handleCancel}
-              />
-            ) : captureState.phase === "playing" ? (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  marginBottom: "16px",
-                }}
-              >
-                <button
-                  className="icon-btn"
-                  onClick={() => captureState.backToSelect()}
-                  aria-label="Back to video selection"
+      {isDesktop ? (
+        <div className="capture-shell">
+          <div className="capture-shell-video">
+            {/* Why/Surprising/Tags/Ending only: back button moves here,
+                left-aligned to the video column, instead of the right-hand
+                panel — see the 2026-09-16 CLAUDE.md entries. Kept out of
+                the centered media wrapper below so it stays pinned to the
+                column's top-left regardless of video height. */}
+            {isCapturePhase && (
+              <CaptureTopbar variant="back" onCancel={handleCancel} onBack={topbarOnBack} />
+            )}
+            <div
+              className="capture-shell-video-media"
+              style={
+                isCapturePhase
+                  ? {
+                      // Why/Surprising/Tags/Ending only: top-aligned instead
+                      // of vertically centered, so the badge+video block
+                      // lines up with the right-hand panel's headline (which
+                      // has always just flowed from the top) rather than
+                      // floating in the middle of the column — see the
+                      // 2026-09-16 CLAUDE.md entry. Playing/Done (this style
+                      // override doesn't apply to them) keep centering,
+                      // unchanged.
+                      justifyContent: "flex-start",
+                      // 24px on top of the back button row's own 16px
+                      // marginBottom, for more breathing room between the
+                      // back button and the Frozen badge below it.
+                      marginTop: "24px",
+                    }
+                  : undefined
+              }
+            >
+              {/* The Frozen badge itself sits inside the centered media
+                  wrapper, immediately above the video — 24px gap, flush
+                  with the video frame's own left edge — rather than pinned
+                  to the column's top like the back button above, so it
+                  travels with the video instead of floating independently
+                  of it. Replicates YouTubePlayer.tsx's own full-bleed
+                  cancellation of --side-padding-video (so this wrapper's
+                  left edge lines up with the video's outer edge), plus the
+                  "card" variant's own 14px left inset and extra vertical
+                  offset — every isCapturePhase screen (Why/Surprising/Tags/
+                  Ending) now renders YouTubePlayer's "card" variant (the
+                  "default" variant's corner brackets/opaque bands were
+                  removed from everywhere but Playing), so the same 14px/6px
+                  values apply to all of them, not just Why. Measured
+                  in-browser (Playwright) against the "card" variant's actual
+                  rendered video box to land on exactly 24px of visible gap
+                  and 0px of left offset, rather than trusting the
+                  arithmetic alone. */}
+              {isCapturePhase && (
+                <div
                   style={{
-                    width: "34px",
-                    height: "34px",
-                    borderRadius: "50%",
-                    border: "1px solid var(--hairline-light)",
-                    backgroundColor: "rgba(255, 255, 255, 0.08)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
+                    width: "calc(100% + 2 * var(--side-padding-video))",
+                    marginLeft: "calc(-1 * var(--side-padding-video))",
+                    paddingLeft: "14px",
+                    marginBottom: "6px",
+                    boxSizing: "border-box",
                   }}
                 >
-                  <CloseIcon size={16} color="var(--on-dark)" />
-                </button>
-              </div>
-            ) : null}
-
-            {showVideo && (
-              <YouTubePlayer
-                ref={playerRef}
-                youtubeId={selectedVideoData.youtubeId}
-                playing={videoPlayer.playing}
-                frozenAt={captureState.frozenAt}
-                onFreeze={captureState.phase === "playing" ? handleFreeze : undefined}
-                onPlayStateChange={setVideoPlaying}
-                variant={captureState.phase === "why" ? "card" : "default"}
-              />
+                  <CaptureTopbar
+                    variant="frozenBadge"
+                    frozenAt={captureState.frozenAt}
+                    formatTime={videoPlayer.formatPreciseTime}
+                    onCancel={handleCancel}
+                  />
+                </div>
+              )}
+              {videoNode}
+              {/* Playing's whole phaseNode is transport controls (speed/
+                  skip/play/scrub) for the video above it — on desktop they
+                  belong directly under the video, not in the otherwise-empty
+                  right-hand panel (where every other phase's phaseNode is
+                  genuinely separate capture UI, not video-adjacent). */}
+              {captureState.phase === "playing" && phaseNode}
+            </div>
+          </div>
+          <div className="capture-shell-panel">
+            {isCapturePhase ? <CaptureTopbar variant="close" onCancel={handleCancel} /> : topbarNode}
+            {/* isCapturePhase only: 40px (24px + a later +16px) further
+                down than the close button's own row, so the panel's
+                headline sits below the video column's Frozen badge instead
+                of exactly flush with it — see the 2026-09-16 CLAUDE.md
+                entries. Done (not isCapturePhase) keeps flowing directly
+                under its own (absent) topbar, unaffected. */}
+            {captureState.phase !== "playing" && (
+              <div style={{ marginTop: isCapturePhase ? "40px" : undefined }}>{phaseNode}</div>
             )}
-
-            {showVideo && captureState.frozenAt !== null && (
-              <ContextScrubber
-                frozenAt={captureState.frozenAt}
-                duration={duration}
-                value={currentTime}
-                onSeek={handleSeek}
-                playing={videoPlaying}
-                onRepositionFreeze={handleRepositionFreeze}
-              />
-            )}
-          </>
-        )}
-
-        {captureState.phase === "playing" && (
-          <div key={captureState.phase} className="screen-enter">
-            <PlayingScreen
-              playing={videoPlayer.playing}
-              onPlayingChange={videoPlayer.setPlaying}
-              currentTime={currentTime}
-              duration={duration}
-              onSeek={handleSeek}
-              onSkip={handleSkip}
-              onSetPlaybackRate={(rate) => playerRef.current?.setPlaybackRate(rate)}
-              formatTime={videoPlayer.formatTime}
-            />
           </div>
-        )}
-
-        {captureState.phase === "why" && (
-          <div key={captureState.phase} className="screen-enter">
-            <WhyScreen
-              whyMode={captureState.answers.whyMode}
-              whyText={captureState.answers.whyText}
-              transcript={captureState.answers.transcript}
-              onWhyModeChange={(mode) => captureState.updateAnswer("whyMode", mode)}
-              onWhyTextChange={(text) => captureState.updateAnswer("whyText", text)}
-              onTranscriptChange={(transcript) => captureState.updateAnswer("transcript", transcript)}
-              onAudioRecorded={setAudioBlob}
-              onBack={handleCancel}
-              onNext={() => captureState.setPhase("surprising")}
-            />
-          </div>
-        )}
-
-        {captureState.phase === "surprising" && (
-          <div key={captureState.phase} className="screen-enter">
-            <SurprisingScreen
-              surprising={captureState.answers.surprising}
-              onSurprisingChange={(value) => captureState.updateAnswer("surprising", value)}
-              onBack={() => captureState.setPhase("why")}
-              onNext={() => captureState.setPhase("tags")}
-            />
-          </div>
-        )}
-
-        {captureState.phase === "tags" && (
-          <div key={captureState.phase} className="screen-enter">
-            <TagsScreen
-              selectedTags={captureState.answers.tags}
-              onToggleTag={(value) => {
-                const current = captureState.answers.tags;
-                captureState.updateAnswer(
-                  "tags",
-                  current.includes(value)
-                    ? current.filter((t) => t !== value)
-                    : [...current, value]
-                );
-              }}
-              onBack={() => captureState.setPhase("surprising")}
-              onNext={() => captureState.setPhase("ending")}
-            />
-          </div>
-        )}
-
-        {captureState.phase === "ending" && (
-          <div key={captureState.phase} className="screen-enter">
-            <EndingScreen
-              endingType={captureState.answers.endingType}
-              onEndingTypeChange={(value) => captureState.updateAnswer("endingType", value)}
-              onBack={() => captureState.setPhase("tags")}
-              onSave={handleSaveMoment}
-              saving={saving}
-              saveError={saveError}
-            />
-          </div>
-        )}
-
-        {captureState.phase === "done" && captureState.frozenAt !== null && (
-          <div key={captureState.phase} className="screen-enter">
-            <DoneScreen
-              phase={captureState.phase}
-              momentLabel={videoPlayer.formatPreciseTime(captureState.frozenAt)}
-              onBackToJogo={() => {
-                captureState.resetForNextMoment();
-                videoPlayer.setPlaying(true);
-                setAudioBlob(null);
-              }}
-              onAnnotateNewVideo={() => {
-                captureState.backToSelect();
-                setAudioBlob(null);
-              }}
-            />
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div style={{ position: "relative" }}>
+          {showTopControls && (
+            <>
+              {topbarNode}
+              {videoNode}
+            </>
+          )}
+          {phaseNode}
+        </div>
+      )}
     </div>
   );
 }

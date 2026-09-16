@@ -6,18 +6,16 @@ import { CaptureFooter } from "@/components/capture/CaptureFooter";
 interface SurprisingScreenProps {
   surprising: boolean | null;
   onSurprisingChange: (value: boolean) => void;
-  onBack: () => void;
   onNext: () => void;
 }
 
 export function SurprisingScreen({
   surprising,
   onSurprisingChange,
-  onBack,
   onNext,
 }: SurprisingScreenProps) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", paddingBottom: "88px" }}>
+    <div className="capture-screen-root">
       <h1
         style={{
           fontSize: "24px",
@@ -43,38 +41,15 @@ export function SurprisingScreen({
       </div>
 
       <CaptureFooter>
-        <button
-          className="icon-btn"
-          onClick={onBack}
-          aria-label="Back to why screen"
-          style={{
-            width: "var(--height-circular)",
-            height: "var(--height-circular)",
-            flex: "0 0 auto",
-            borderRadius: "var(--radius-pill)",
-            backgroundColor: "transparent",
-            border: "1px solid var(--hairline-strong)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-          }}
-        >
-          <span style={{ display: "inline-flex", transform: "rotate(180deg)" }}>
-            <ArrowIcon size={17} color="var(--on-dark)" />
-          </span>
-        </button>
-        <div style={{ flex: 1 }}>
-          <PillButton onClick={onNext}>
-            {surprising !== null ? (
-              <>
-                Continue <ArrowIcon size={17} color="#0c0a09" />
-              </>
-            ) : (
-              "Skip"
-            )}
-          </PillButton>
-        </div>
+        <PillButton onClick={onNext}>
+          {surprising !== null ? (
+            <>
+              Continue <ArrowIcon size={17} color="#0c0a09" />
+            </>
+          ) : (
+            "Skip"
+          )}
+        </PillButton>
       </CaptureFooter>
     </div>
   );

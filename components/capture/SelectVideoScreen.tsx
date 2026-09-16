@@ -15,11 +15,16 @@ interface SelectVideoScreenProps {
 
 // Slower, subtler than the shared GradientOrbs used on capture screens —
 // this entry screen's spec calls for 44-60s drift and .20-.30 opacity.
+// Positions are fixed px insets from each corner (computed off the
+// 412x880 mobile/centered-card reference) rather than percentages of the
+// container: .svs-orbs spans the full page at desktop (>=1024px), and a
+// percentage-of-width offset there pushed every orb hundreds of px past
+// the visible edge instead of just past a phone-sized corner.
 const ENTRY_ORBS = [
-  { color: "var(--orb-mint)", top: "-8%", left: "-18%", size: "240px", duration: "52s", delay: "0s", opacity: 0.28 },
-  { color: "var(--orb-lavender)", top: "6%", right: "-22%", size: "260px", duration: "58s", delay: "-16s", opacity: 0.22 },
-  { color: "var(--orb-peach)", bottom: "20%", left: "-16%", size: "220px", duration: "48s", delay: "-30s", opacity: 0.3 },
-  { color: "var(--orb-sky)", bottom: "-12%", right: "-14%", size: "230px", duration: "60s", delay: "-42s", opacity: 0.24 },
+  { color: "var(--orb-mint)", top: "-70px", left: "-74px", size: "240px", duration: "52s", delay: "0s", opacity: 0.28 },
+  { color: "var(--orb-lavender)", top: "53px", right: "-91px", size: "260px", duration: "58s", delay: "-16s", opacity: 0.22 },
+  { color: "var(--orb-peach)", bottom: "176px", left: "-66px", size: "220px", duration: "48s", delay: "-30s", opacity: 0.3 },
+  { color: "var(--orb-sky)", bottom: "-106px", right: "-58px", size: "230px", duration: "60s", delay: "-42s", opacity: 0.24 },
 ] as const;
 
 function formatMeta(video: Video): string {
@@ -103,21 +108,26 @@ export function SelectVideoScreen({
             </p>
           </div>
 
-          <div className="svs-scroll">
-            <section className="svs-section">
-              <div className="svs-section-label">Who&rsquo;s annotating</div>
-              <div className="svs-name-field">
-                <input
-                  className="svs-name-input"
-                  type="text"
-                  placeholder="Your name"
-                  value={annotatorName}
-                  onChange={(e) => onAnnotatorNameChange(e.target.value)}
-                />
-                <span aria-hidden className="svs-name-caret" />
-              </div>
-            </section>
+          {/* A direct sibling of .svs-header/.svs-scroll (not nested inside
+              .svs-scroll like the other two sections below) so the desktop
+              (>=1024px) layout can grid-place it into its own left-column
+              area independently of the jogo list — see .svs-content's
+              grid-template-areas in globals.css. */}
+          <section className="svs-section svs-name-section">
+            <div className="svs-section-label">Who&rsquo;s annotating</div>
+            <div className="svs-name-field">
+              <input
+                className="svs-name-input"
+                type="text"
+                placeholder="Your name"
+                value={annotatorName}
+                onChange={(e) => onAnnotatorNameChange(e.target.value)}
+              />
+              <span aria-hidden className="svs-name-caret" />
+            </div>
+          </section>
 
+          <div className="svs-scroll">
             <section className="svs-section">
               <div className="svs-section-label">Pick a jogo</div>
               {loading ? (

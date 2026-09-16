@@ -77,15 +77,16 @@ export function PlayingScreen({
             onClick={() => onSkip(-5)}
             aria-label="Back 5 seconds"
             style={{
-              background: "none",
-              border: "none",
+              background: "rgba(255, 255, 255, 0.07)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: "8px",
               cursor: "pointer",
-              fontSize: "16px",
-              fontWeight: 600,
-              letterSpacing: "0.3px",
-              color: "rgba(255, 255, 255, 0.92)",
+              fontSize: "14px",
+              fontWeight: 500,
+              letterSpacing: "0.2px",
+              color: "#b5a898",
               fontVariantNumeric: "tabular-nums",
-              padding: "8px 6px",
+              padding: "8px 16px",
             }}
           >
             −5s
@@ -118,15 +119,16 @@ export function PlayingScreen({
             onClick={() => onSkip(5)}
             aria-label="Forward 5 seconds"
             style={{
-              background: "none",
-              border: "none",
+              background: "rgba(255, 255, 255, 0.07)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: "8px",
               cursor: "pointer",
-              fontSize: "16px",
-              fontWeight: 600,
-              letterSpacing: "0.3px",
-              color: "rgba(255, 255, 255, 0.92)",
+              fontSize: "14px",
+              fontWeight: 500,
+              letterSpacing: "0.2px",
+              color: "#b5a898",
               fontVariantNumeric: "tabular-nums",
-              padding: "8px 6px",
+              padding: "8px 16px",
             }}
           >
             +5s

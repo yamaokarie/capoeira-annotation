@@ -8,7 +8,6 @@ import { CaptureFooter } from "@/components/capture/CaptureFooter";
 interface EndingScreenProps {
   endingType: string | null;
   onEndingTypeChange: (value: string) => void;
-  onBack: () => void;
   onSave: () => void;
   saving?: boolean;
   saveError?: string | null;
@@ -17,7 +16,6 @@ interface EndingScreenProps {
 export function EndingScreen({
   endingType,
   onEndingTypeChange,
-  onBack,
   onSave,
   saving = false,
   saveError = null,
@@ -26,7 +24,7 @@ export function EndingScreen({
   const activeDefinition = ENDING_TYPES.find((ending) => ending.value === lastTapped)?.definition;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", paddingBottom: "88px" }}>
+    <div className="capture-screen-root">
       <h1
         style={{
           fontSize: "24px",
@@ -90,33 +88,10 @@ export function EndingScreen({
       )}
 
       <CaptureFooter>
-        <button
-          className="icon-btn"
-          onClick={onBack}
-          aria-label="Back to tags screen"
-          style={{
-            width: "var(--height-circular)",
-            height: "var(--height-circular)",
-            flex: "0 0 auto",
-            borderRadius: "var(--radius-pill)",
-            backgroundColor: "transparent",
-            border: "1px solid var(--hairline-strong)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-          }}
-        >
-          <span style={{ display: "inline-flex", transform: "rotate(180deg)" }}>
-            <ArrowIcon size={17} color="var(--on-dark)" />
-          </span>
-        </button>
-        <div style={{ flex: 1 }}>
-          <PillButton onClick={onSave} disabled={saving}>
-            {saving ? "Saving…" : "Save"}
-            {!saving && <ArrowIcon size={17} color="#0c0a09" />}
-          </PillButton>
-        </div>
+        <PillButton onClick={onSave} disabled={saving}>
+          {saving ? "Saving…" : "Save"}
+          {!saving && <ArrowIcon size={17} color="#0c0a09" />}
+        </PillButton>
       </CaptureFooter>
     </div>
   );

@@ -54,6 +54,11 @@
   --height-input: 40px;
   --height-circular: 40px;
 
+  /* Desktop (>=1024px) two-column capture shell — see .capture-shell
+     below. Unused below 1024px. */
+  --capture-shell-max-width: 1180px;
+  --capture-shell-panel-width: 400px;
+
   --font-display: var(--font-bogue), "Playfair Display", serif;
   --font-serif-italic: var(--font-eb-garamond), "EB Garamond", serif;
   --font-kicker: var(--font-dm-sans), "DM Sans", sans-serif;
@@ -67,6 +72,19 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* Root app wrapper (app/layout.tsx). Caps the whole app at the mobile
+   phone-frame width by default; lifted at desktop so SelectVideoScreen's
+   light-wash layout and the capture-shell two-column layout (both below)
+   have the full viewport to work with. */
+.app-shell {
+  max-width: 412px;
+}
+@media (min-width: 1024px) {
+  .app-shell {
+    max-width: none;
+  }
 }
 
 @keyframes orb-drift {
@@ -268,6 +286,127 @@ body {
   }
 }
 
+/* Desktop (>=1024px) two-column capture shell — used by app/page.tsx for
+   every non-select phase (Playing/Why/Surprising/Tags/Ending/Done). Below
+   1024px these rules don't apply; page.tsx renders its original
+   single-column mobile markup instead. */
+.capture-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--capture-shell-panel-width);
+  gap: var(--gap-3xl);
+  max-width: var(--capture-shell-max-width);
+  min-height: 100vh;
+  margin: 0 auto;
+  align-items: stretch;
+  padding: var(--gap-3xl) var(--gap-xl);
+}
+.capture-shell-video {
+  display: flex;
+  /* Column, not row: on phases with a frozen moment this holds both
+     YouTubePlayer and ContextScrubber (see videoNode in page.tsx), which
+     need to stack vertically (video, then scrubber below it) rather than
+     split the row side by side — flex's default row direction was doing
+     the latter. align-items stays the column-direction default (stretch),
+     which is what lets each child's own width:100% actually reach full
+     column width. */
+  flex-direction: column;
+  /* Not a visual choice — YouTubePlayer/ContextScrubber cancel their
+     parent's --side-padding-video via a negative margin to go full-bleed.
+     Without this padding here for them to cancel, they'd overflow this
+     column by 2 * --side-padding-video. */
+  padding: 0 var(--side-padding-video);
+  box-sizing: border-box;
+}
+/* Wraps YouTubePlayer/ContextScrubber (and Playing's transport controls)
+   so they stay vertically centered in the column even once the back
+   button + Frozen badge (Why/Surprising/Tags/Ending only, see page.tsx)
+   sit above as a top-pinned sibling instead of being centered as part of
+   the same group. min-height:0 lets this flex child actually shrink
+   inside the shell's min-height:100vh column instead of overflowing it. */
+.capture-shell-video-media {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.capture-shell-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Shared root wrapper for Surprising/Tags/Ending/Done, which each pin a
+   CaptureFooter to the bottom. Mobile values match what each screen
+   hardcoded inline before this was factored out here.
+   --capture-footer-clearance lets an individual screen (Done) override the
+   default bottom padding via an inline custom-property. */
+.capture-screen-root {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--capture-footer-clearance, 88px);
+}
+@media (min-width: 1024px) {
+  .capture-screen-root {
+    height: 100%;
+  }
+}
+
+/* Back/primary button row shared by Surprising/Tags/Ending/Done
+   (CaptureFooter.tsx). Fixed to the viewport bottom on mobile so its
+   position doesn't depend on content height above it; scoped to the
+   capture-shell's right-hand panel column at desktop instead (see
+   .capture-shell-panel above), pinned via margin-top:auto rather than
+   position:fixed so it never has to track the panel's width/offset. */
+.capture-footer-outer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 16px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.capture-footer-inner {
+  width: 100%;
+  max-width: 412px;
+  box-sizing: border-box;
+  padding: 0 var(--side-padding);
+  display: flex;
+  gap: var(--gap-sm);
+  pointer-events: auto;
+}
+@media (min-width: 1024px) {
+  .capture-footer-outer {
+    position: static;
+    display: block;
+    margin-top: auto;
+    /* DoneScreen's root sets align-items:center (to center its checkmark/
+       headline/copy) — without this, that would also shrink-wrap this
+       footer to its content width instead of letting it stretch full
+       width like Surprising/Tags/Ending's footers do (those don't
+       override align-items, so the flex column's default "stretch"
+       already covers them). align-self overrides the parent's
+       align-items for this one item regardless of which case applies. */
+    align-self: stretch;
+  }
+  .capture-footer-inner {
+    max-width: none;
+    padding: 0;
+    width: 100%;
+  }
+}
+
+/* CaptureTopbar.tsx's "back"/"full" variants' own back button. Now the
+   only back button in the capture flow at every width — the mobile inline
+   one next to Continue/Skip/Save was removed 2026-09-16, which briefly
+   left mobile with no way back at all (this button was mistakenly
+   display:none there); restored the same day. !important: the button's
+   own inline style sets display:flex (to center its icon), which
+   otherwise beats a plain class rule regardless of specificity. */
+.capture-topbar-back {
+  display: flex !important;
+}
+
 /* Custom-styled native range input — thin track + white thumb,
    matching design_handoff_capoeira_annotation's Scrubber component.
    Padding + content-box clipping (2026-09-10) gives this a larger
@@ -390,12 +529,13 @@ body {
 /* Entry / video-selection screen (SelectVideoScreen) — scoped to svs-*,
    does not affect any other screen. */
 .svs-page {
+  position: relative;
   min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 32px 16px;
-  background: radial-gradient(circle at 50% 20%, #ffffff, #f5f5f5 65%);
+  background: var(--ink);
 }
 
 .svs-card {
@@ -415,7 +555,6 @@ body {
   .svs-page {
     padding: 0;
     align-items: stretch;
-    background: var(--ink);
   }
   .svs-card {
     width: 100%;
@@ -722,4 +861,56 @@ body {
 .svs-add-pill:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+
+/* Desktop (>=1024px): SelectVideoScreen drops the centered 412x880 dark
+   card and becomes a full-bleed two-column layout sitting directly on
+   .svs-page's dark background (same var(--ink) + blurred orbs texture as
+   mobile) — left column is the header + name field (.svs-header/
+   .svs-name-section), right column is the jogo list + bring-your-own row
+   (.svs-scroll). Everything below 1024px (including the 520-1024px
+   centered-card range and the <=520px full-bleed range) is untouched by
+   this block. */
+@media (min-width: 1024px) {
+  .svs-page {
+    overflow: hidden;
+  }
+  .svs-card {
+    position: static;
+    width: 100%;
+    height: auto;
+    min-height: 100vh;
+    max-height: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .svs-content {
+    height: auto;
+    min-height: 100vh;
+    max-width: var(--capture-shell-max-width);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    grid-template-areas: "head list" "name list";
+    align-content: center;
+    gap: var(--gap-3xl);
+    padding: var(--gap-3xl) var(--gap-xl);
+  }
+  .svs-header {
+    grid-area: head;
+    margin-bottom: 0;
+  }
+  .svs-name-section {
+    grid-area: name;
+    align-self: start;
+  }
+  .svs-scroll {
+    grid-area: list;
+    flex: none;
+    overflow-y: visible;
+    padding-bottom: 0;
+  }
 }

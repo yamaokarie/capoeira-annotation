@@ -1,7 +1,19 @@
+import type { CSSProperties } from "react";
 import { PillButton } from "@/components/ui/Button";
 import { SavedCheck } from "@/components/ui/SavedCheck";
 import { CaptureFooter } from "@/components/capture/CaptureFooter";
 import type { CapturePhase } from "@/lib/types";
+
+// --capture-footer-clearance is read by the shared .capture-screen-root
+// class (globals.css) to override its default 88px CaptureFooter
+// clearance — Done's footer holds two stacked buttons instead of one row,
+// so it needs more room below the content.
+const rootStyle: CSSProperties = {
+  alignItems: "center",
+  textAlign: "center",
+  paddingTop: "48px",
+  ["--capture-footer-clearance" as string]: "140px",
+};
 
 interface DoneScreenProps {
   phase?: CapturePhase;
@@ -17,32 +29,9 @@ export function DoneScreen({
   onAnnotateNewVideo,
 }: DoneScreenProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        textAlign: "center",
-        paddingTop: "48px",
-        paddingBottom: "140px",
-      }}
-    >
+    <div className="capture-screen-root" style={rootStyle}>
       <div style={{ marginBottom: "48px" }}>
         <SavedCheck key={phase} />
-      </div>
-
-      <div
-        style={{
-          fontFamily: "var(--font-kicker)",
-          fontSize: "12px",
-          fontWeight: 600,
-          letterSpacing: "2px",
-          textTransform: "uppercase",
-          color: "var(--on-dark-soft)",
-          marginBottom: "8px",
-        }}
-      >
-        Moment Capture
       </div>
 
       <h1
@@ -97,6 +86,12 @@ export function DoneScreen({
           fontSize: "17px",
           color: "var(--on-dark-soft)",
           margin: 0,
+          // At least 16px clear of the footer's Back to Jogo button below —
+          // on mobile the footer is fixed to the viewport bottom (see
+          // CaptureFooter.tsx), out of flow, so this space comes from
+          // pushing this paragraph's own trailing edge up via marginBottom
+          // rather than from the footer's position.
+          marginBottom: "var(--gap-md)",
         }}
       >
         Your annotation has been recorded.

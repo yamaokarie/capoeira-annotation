@@ -37,7 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${inter.variable} ${dmSans.variable} ${ebGaramond.variable} ${bogueBlack.variable}`}
     >
       <body className="min-h-full">
-        <div className="relative mx-auto min-h-screen max-w-[412px]">
+        <div className="relative mx-auto min-h-screen app-shell">
           {children}
         </div>
       </body>
