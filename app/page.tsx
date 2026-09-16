@@ -406,10 +406,18 @@ export default function Home() {
 
       {isDesktop ? (
         <div className="capture-shell">
-          <div className="capture-shell-video">{videoNode}</div>
+          <div className="capture-shell-video">
+            {videoNode}
+            {/* Playing's whole phaseNode is transport controls (speed/
+                skip/play/scrub) for the video above it — on desktop they
+                belong directly under the video, not in the otherwise-empty
+                right-hand panel (where every other phase's phaseNode is
+                genuinely separate capture UI, not video-adjacent). */}
+            {captureState.phase === "playing" && phaseNode}
+          </div>
           <div className="capture-shell-panel">
             {topbarNode}
-            {phaseNode}
+            {captureState.phase !== "playing" && phaseNode}
           </div>
         </div>
       ) : (
