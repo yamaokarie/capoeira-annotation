@@ -150,19 +150,8 @@ export function WhyScreen({
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <div style={{ marginBottom: "var(--gap-lg)" }}>
-        <div
-          style={{
-            fontSize: "12px",
-            fontWeight: 600,
-            letterSpacing: "0.96px",
-            textTransform: "uppercase",
-            color: "var(--on-dark-soft)",
-            marginBottom: "14px",
-          }}
-        >
-          In your own words
-        </div>
         <h1
+          className="why-headline"
           style={{
             fontFamily: "var(--font-display)",
             fontWeight: 400,
@@ -171,7 +160,9 @@ export function WhyScreen({
             lineHeight: 1.1,
             letterSpacing: "-0.6px",
             maxWidth: "11ch",
-            margin: 0,
+            marginRight: 0,
+            marginBottom: 0,
+            marginLeft: 0,
           }}
         >
           Why does this moment{" "}matter?

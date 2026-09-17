@@ -159,6 +159,7 @@ export function ContextScrubber({
         width: "calc(100% + 2 * var(--side-padding-video))",
         marginLeft: "calc(-1 * var(--side-padding-video))",
         padding: "0 12px",
+        marginTop: "-8px",
         marginBottom: "16px",
       }}
     >
