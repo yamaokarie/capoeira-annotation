@@ -310,6 +310,10 @@ export default function Home() {
         onFreeze={captureState.phase === "playing" ? handleFreeze : undefined}
         onPlayStateChange={setVideoPlaying}
         variant={captureState.phase === "playing" ? "default" : "card"}
+        // Why reuses the mute state set on the preceding Playing screen
+        // (same player instance persists across the transition) instead of
+        // showing its own redundant speaker button.
+        showMuteButton={captureState.phase !== "why"}
       />
       {captureState.frozenAt !== null && (
         <ContextScrubber

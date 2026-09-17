@@ -84,6 +84,12 @@ interface YouTubePlayerProps {
   // variant — accepted trade-off, revisit if the native button reads as
   // visible chrome in practice).
   variant?: "default" | "card";
+  // Why only: false. Muting/unmuting there would be redundant with the
+  // speaker button already shown on the preceding Playing ("Tap to
+  // freeze") screen — the same player instance persists across that phase
+  // change, so whatever mute state was set there just carries over with
+  // nothing extra to show. Every other capture phase keeps the button.
+  showMuteButton?: boolean;
 }
 
 // YT.PlayerState values (the iframe API doesn't expose named constants to
@@ -94,7 +100,15 @@ const YT_PLAYING = 1;
 // playVideo() autoplay call; the speaker button below lets it unmute.
 export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>(
   function YouTubePlayer(
-    { youtubeId, playing, frozenAt, onFreeze, onPlayStateChange, variant = "default" },
+    {
+      youtubeId,
+      playing,
+      frozenAt,
+      onFreeze,
+      onPlayStateChange,
+      variant = "default",
+      showMuteButton = true,
+    },
     ref
   ) {
     const isCard = variant === "card";
@@ -469,7 +483,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
                 />
               ))}
 
-            {!isCard && (
+            {!isCard && showMuteButton && (
               // Larger invisible hit area (44x44, square) around the
               // visible 32px circle, centered inside via flex so it lands
               // at the same on-screen spot as before. Tried padding +
@@ -521,7 +535,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
               FROZEN badge (not the opaque circle above), overlapping the
               card's edge instead of sitting inset from it. Lives outside the
               clip layer above so the overlap isn't clipped. */}
-          {isCard && (
+          {isCard && showMuteButton && (
             // Same square-outer/round-inner touch-target technique as the
             // non-card button above: larger invisible hit area (50x50)
             // around the visible 38px pill, centered inside via flex.

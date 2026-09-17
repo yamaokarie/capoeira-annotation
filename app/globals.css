@@ -87,6 +87,21 @@
   }
 }
 
+/* WhyScreen's headline used to sit below an "In your own words" kicker
+   label (12px text + 14px margin = 32px). Removing that kicker leaves the
+   headline's mobile position unchanged only if this compensates for the
+   space it used to occupy; desktop's headline position is governed
+   separately (app/page.tsx's panel-column marginTop), so no compensation
+   is needed there. */
+.why-headline {
+  margin-top: 32px;
+}
+@media (min-width: 1024px) {
+  .why-headline {
+    margin-top: 0;
+  }
+}
+
 @keyframes orb-drift {
   0%,
   100% {
