@@ -407,31 +407,41 @@ body {
   display: flex !important;
 }
 
-/* Custom-styled native range input — thin track + white thumb,
-   matching design_handoff_capoeira_annotation's Scrubber component.
-   Padding + content-box clipping (2026-09-10) gives this a larger
-   invisible touch target (28px tall) around the visually-thin 4px track.
-   PlayingScreen.tsx sets its progress-fill color via inline
-   `backgroundImage` (not the `background` shorthand) specifically so it
-   doesn't reset this rule's `background-clip` back to border-box. */
+/* Custom-styled native range input — invisible track (the visible track +
+   progress fill are separate divs painted behind it in PlayingScreen.tsx,
+   not this element's own background) plus a white thumb, matching
+   design_handoff_capoeira_annotation's Scrubber component. Padding gives
+   this a larger invisible touch target (28px tall) around the visually-thin
+   6px track underneath. Used to paint its own background (clipped to a
+   content-box padding trick) with the progress-fill color set via inline
+   `backgroundImage` on the input, but a range input's rounded corners are
+   computed off its full padded box, not the thin content-box band clipped
+   inside it — the curve cut diagonally into that band near each end,
+   mitering the track to a point instead of a clean rounded cap. Moved the
+   visuals to plain divs (which don't have that quirk) and left this
+   element fully transparent. */
 .scrub-input {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 4px;
-  padding: 12px 0;
+  height: 6px;
+  padding: 11px 0;
   box-sizing: content-box;
-  border-radius: var(--radius-pill);
   outline: none;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.32);
-  background-clip: content-box;
+  background: transparent;
+}
+.scrub-input::-webkit-slider-runnable-track {
+  background: transparent;
+}
+.scrub-input::-moz-range-track {
+  background: transparent;
 }
 .scrub-input::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
@@ -444,8 +454,8 @@ body {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 0 0 6px rgba(255, 255, 255, 0.16);
 }
 .scrub-input::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: #fff;
   border: none;
@@ -456,11 +466,6 @@ body {
 .scrub-input:active::-moz-range-thumb,
 .scrub-input.is-dragging::-moz-range-thumb {
   transform: scale(1.4);
-}
-.scrub-input::-moz-range-track {
-  height: 4px;
-  border-radius: var(--radius-pill);
-  background: transparent;
 }
 
 /* Context scrubber (ContextScrubber.tsx) — same thin-track look as
