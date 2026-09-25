@@ -60,7 +60,8 @@
   --capture-shell-panel-width: 400px;
 
   --font-display: var(--font-bogue), "Playfair Display", serif;
-  --font-serif-italic: var(--font-eb-garamond), "EB Garamond", serif;
+  --font-serif-italic: var(--font-source-serif), "Source Serif 4", serif;
+  --font-quote: var(--font-source-serif), "Source Serif 4", serif;
   --font-kicker: var(--font-dm-sans), "DM Sans", sans-serif;
   --font-body: var(--font-inter), "Inter", sans-serif;
 }

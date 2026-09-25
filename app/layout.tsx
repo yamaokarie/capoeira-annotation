@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DM_Sans, EB_Garamond, Inter } from "next/font/google";
+import { DM_Sans, Inter, Source_Serif_4 } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -13,10 +13,11 @@ const dmSans = DM_Sans({
   subsets: ["latin"],
 });
 
-const ebGaramond = EB_Garamond({
-  variable: "--font-eb-garamond",
+const sourceSerif = Source_Serif_4({
+  variable: "--font-source-serif",
   subsets: ["latin"],
   style: ["normal", "italic"],
+  weight: ["300", "400"],
 });
 
 const bogueBlack = localFont({
@@ -34,7 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${dmSans.variable} ${ebGaramond.variable} ${bogueBlack.variable}`}
+      className={`${inter.variable} ${dmSans.variable} ${sourceSerif.variable} ${bogueBlack.variable}`}
     >
       <body className="min-h-full">
         <div className="relative mx-auto min-h-screen app-shell">
