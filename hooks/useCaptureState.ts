@@ -10,6 +10,8 @@ interface Answers {
   endingType: string | null;
 }
 
+const CAPTURE_PHASES: CapturePhase[] = ["why", "surprising", "tags", "ending"];
+
 const initialAnswers: Answers = {
   whyMode: "voice",
   transcript: "",
@@ -27,6 +29,10 @@ export function useCaptureState(storageKey = "capoeira-capture-state") {
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [frozenAt, setFrozenAt] = useState<number | null>(null);
   const [answers, setAnswers] = useState<Answers>(initialAnswers);
+  // False until the saved draft (if any) has been read back from
+  // localStorage — gates the save effect below so the first render's empty
+  // state doesn't overwrite the draft before it's restored.
+  const [hydrated, setHydrated] = useState(false);
 
   const updateAnswer = <K extends keyof Answers>(key: K, value: Answers[K]) => {
     setAnswers((prev) => ({ ...prev, [key]: value }));
@@ -50,8 +56,8 @@ export function useCaptureState(storageKey = "capoeira-capture-state") {
   // just backs out of a moment; this also clears `selectedVideo` and, unlike
   // `cancel`, `frozenAt`/`answers` here matter because the *next* video
   // picked could otherwise inherit the previous one's frozen timestamp and
-  // answers (frozenAt isn't persisted to localStorage, but it does survive
-  // in memory across a video switch within the same session).
+  // answers (both are persisted to localStorage, and survive in memory
+  // across a video switch).
   const backToSelect = () => {
     setPhase("select");
     setSelectedVideo(null);
@@ -59,12 +65,50 @@ export function useCaptureState(storageKey = "capoeira-capture-state") {
     setAnswers(initialAnswers);
   };
 
+  // Restore an in-progress draft so an annotator can close the tab (or
+  // reload, or come back days later) and pick up where they left off —
+  // there's no expiry. A finished moment ("done") isn't a draft, so it
+  // comes back as the same video playing with a clean slate instead.
+  // localStorage isn't available during the server render, so this has to
+  // run after mount rather than in the useState initializers.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    const state = { phase, annotatorName, selectedVideo, answers };
-    localStorage.setItem(storageKey, JSON.stringify(state));
-  }, [storageKey, phase, annotatorName, selectedVideo, answers]);
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (typeof saved.annotatorName === "string") setAnnotatorName(saved.annotatorName);
+        if (typeof saved.selectedVideo === "string") {
+          setSelectedVideo(saved.selectedVideo);
+          const savedFrozenAt = typeof saved.frozenAt === "number" ? saved.frozenAt : null;
+          if (savedFrozenAt !== null && CAPTURE_PHASES.includes(saved.phase)) {
+            setPhase(saved.phase);
+            setFrozenAt(savedFrozenAt);
+            setAnswers({ ...initialAnswers, ...saved.answers });
+          } else {
+            setPhase("playing");
+          }
+        }
+      }
+    } catch {
+      // Unreadable/blocked storage — just start fresh.
+    }
+    setHydrated(true);
+  }, [storageKey]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const state = { phase, annotatorName, selectedVideo, frozenAt, answers };
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(state));
+    } catch {
+      // Storage full/blocked — the draft just won't survive a reload.
+    }
+  }, [hydrated, storageKey, phase, annotatorName, selectedVideo, frozenAt, answers]);
 
   return {
+    hydrated,
     phase,
     setPhase,
     annotatorName,
