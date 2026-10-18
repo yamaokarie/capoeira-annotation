@@ -107,13 +107,29 @@ export function CaptureApp({ audience }: { audience: Audience }) {
     (v) => v.videoId === captureState.selectedVideo
   );
 
-  // Start playing as soon as a video is chosen.
+  // Start playing as soon as a video is chosen — but not when a saved
+  // draft restores straight into a capture phase, where the video should
+  // stay paused on the frozen moment.
   useEffect(() => {
-    if (captureState.selectedVideo) {
+    if (captureState.selectedVideo && captureState.phase === "playing") {
       videoPlayer.setPlaying(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [captureState.selectedVideo]);
+
+  // If a restored draft's video is gone from the list (e.g. removed from
+  // Airtable), drop the draft rather than leaving stale frozenAt/answers
+  // behind for whichever video gets picked next.
+  useEffect(() => {
+    if (
+      !videosLoading &&
+      captureState.selectedVideo &&
+      !videos.some((v) => v.videoId === captureState.selectedVideo)
+    ) {
+      captureState.backToSelect();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videosLoading, videos, captureState.selectedVideo]);
 
   // Poll the real player position while actively playing, to drive the
   // scrub row and give the freeze button an accurate timestamp.
@@ -134,7 +150,22 @@ export function CaptureApp({ audience }: { audience: Audience }) {
       }, 250);
       return () => clearInterval(id);
     }
-  }, [captureState.phase, isCapturePhase, videoPlaying]);
+    // Duration is otherwise only read while Playing — a draft restored
+    // straight into a capture phase (skipping Playing and handleFreeze)
+    // needs it fetched once the player's ready, and the scrubber head lined
+    // up with the frozen moment.
+    if (isCapturePhase && duration === 0) {
+      const id = setInterval(() => {
+        setDuration(playerRef.current?.getDuration() ?? 0);
+        setCurrentTime(captureState.frozenAt ?? 0);
+      }, 250);
+      return () => clearInterval(id);
+    }
+  }, [captureState.phase, captureState.frozenAt, isCapturePhase, videoPlaying, duration]);
+
+  // Hold off until any saved draft has been restored, so the Select screen
+  // doesn't flash (with an empty name field) before jumping to the draft.
+  if (!captureState.hydrated) return null;
 
   if (captureState.phase === "select" || !selectedVideoData) {
     return (

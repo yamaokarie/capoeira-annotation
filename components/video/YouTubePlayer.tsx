@@ -116,6 +116,9 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
     const containerRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<YTPlayerInstance | null>(null);
     const readyRef = useRef(false);
+    // True while a restored draft's frozen frame is being loaded in (see
+    // onReady) — the brief muted play it takes isn't real playback.
+    const restoringRef = useRef(false);
     const playingRef = useRef(playing);
     const frozenAtRef = useRef(frozenAt);
     const onPlayStateChangeRef = useRef(onPlayStateChange);
@@ -184,7 +187,17 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
             onReady: (event: { target: YTPlayerInstance }) => {
               readyRef.current = true;
               applyMute();
-              applyState();
+              // Already frozen on load means a restored draft (see
+              // useCaptureState). A seek on a never-started video doesn't
+              // paint a frame, so play (muted) and pause again on the frozen
+              // moment as soon as it's actually playing — see onStateChange.
+              if (frozenAtRef.current != null) {
+                restoringRef.current = true;
+                event.target.seekTo(frozenAtRef.current, true);
+                event.target.playVideo();
+              } else {
+                applyState();
+              }
 
               // Must happen here (not right after `new YT.Player(...)`) — the
               // iframe isn't in the DOM yet at that point, so styling it
@@ -212,6 +225,15 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
               }, 4000);
             },
             onStateChange: (event: { data: number }) => {
+              if (restoringRef.current) {
+                if (event.data !== YT_PLAYING) return;
+                restoringRef.current = false;
+                if (frozenAtRef.current != null) {
+                  playerRef.current?.seekTo(frozenAtRef.current, true);
+                }
+                applyState();
+                return;
+              }
               onPlayStateChangeRef.current?.(event.data === YT_PLAYING);
             },
           },
