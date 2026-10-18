@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parseAudience, tableFor } from "@/lib/audience";
 
 interface AirtableVideoRecord {
   fields: {
@@ -9,10 +10,13 @@ interface AirtableVideoRecord {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const token = process.env.AIRTABLE_TOKEN;
   const baseId = process.env.AIRTABLE_BASE_ID;
-  const table = process.env.AIRTABLE_VIDEOS_TABLE || "Videos";
+  const table = tableFor(
+    parseAudience(request.nextUrl.searchParams.get("audience")),
+    "videos"
+  );
 
   if (!token || !baseId) {
     return NextResponse.json(
@@ -84,7 +88,10 @@ async function fetchYoutubeTitle(youtubeId: string): Promise<string> {
 export async function POST(request: NextRequest) {
   const token = process.env.AIRTABLE_TOKEN;
   const baseId = process.env.AIRTABLE_BASE_ID;
-  const table = process.env.AIRTABLE_VIDEOS_TABLE || "Videos";
+  const table = tableFor(
+    parseAudience(request.nextUrl.searchParams.get("audience")),
+    "videos"
+  );
 
   if (!token || !baseId) {
     return NextResponse.json(

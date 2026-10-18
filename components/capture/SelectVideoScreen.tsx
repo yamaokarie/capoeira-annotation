@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import type { Video } from "@/lib/types";
+import type { Audience } from "@/lib/audience";
 
 interface SelectVideoScreenProps {
+  audience: Audience;
   videos: Video[];
   loading: boolean;
   error: string | null;
@@ -32,6 +34,7 @@ function formatMeta(video: Video): string {
 }
 
 export function SelectVideoScreen({
+  audience,
   videos,
   loading,
   error,
@@ -40,6 +43,7 @@ export function SelectVideoScreen({
   onVideoAdded,
   onStartAnnotating,
 }: SelectVideoScreenProps) {
+  const isStudent = audience === "student";
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
@@ -51,7 +55,7 @@ export function SelectVideoScreen({
     setAddError(null);
 
     try {
-      const response = await fetch("/api/videos", {
+      const response = await fetch(`/api/videos?audience=${audience}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ youtubeUrl }),
@@ -98,10 +102,13 @@ export function SelectVideoScreen({
 
         <div className="svs-content">
           <div className="svs-header">
-            <div className="svs-kicker">Capoeira &middot; Moment Capture</div>
+            <div className="svs-kicker">
+              Capoeira &middot; {isStudent ? "Student Rodas" : "Moment Capture"}
+            </div>
             <h1 className="svs-headline">
               Annotate
-              <br />a jogo
+              <br />
+              {isStudent ? "a roda" : "a jogo"}
             </h1>
             <p className="svs-subhead">
               Watch a game, freeze the moments that matter, and say why in your own words.
@@ -129,7 +136,7 @@ export function SelectVideoScreen({
 
           <div className="svs-scroll">
             <section className="svs-section">
-              <div className="svs-section-label">Pick a jogo</div>
+              <div className="svs-section-label">{isStudent ? "Pick a roda" : "Pick a jogo"}</div>
               {loading ? (
                 <p className="svs-status-message">Loading videos&hellip;</p>
               ) : error ? (

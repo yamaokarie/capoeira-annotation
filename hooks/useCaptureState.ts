@@ -19,7 +19,9 @@ const initialAnswers: Answers = {
   endingType: null,
 };
 
-export function useCaptureState() {
+// `storageKey` keeps the expert (`/`) and student (`/student`) sites from
+// overwriting each other's saved state.
+export function useCaptureState(storageKey = "capoeira-capture-state") {
   const [phase, setPhase] = useState<CapturePhase>("select");
   const [annotatorName, setAnnotatorName] = useState("");
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
@@ -59,8 +61,8 @@ export function useCaptureState() {
 
   useEffect(() => {
     const state = { phase, annotatorName, selectedVideo, answers };
-    localStorage.setItem("capoeira-capture-state", JSON.stringify(state));
-  }, [phase, annotatorName, selectedVideo, answers]);
+    localStorage.setItem(storageKey, JSON.stringify(state));
+  }, [storageKey, phase, annotatorName, selectedVideo, answers]);
 
   return {
     phase,

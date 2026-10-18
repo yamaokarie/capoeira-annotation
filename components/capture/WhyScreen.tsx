@@ -24,6 +24,11 @@ interface WhyScreenProps {
   onTranscriptChange: (transcript: string) => void;
   onAudioRecorded: (blob: Blob | null) => void;
   onNext: () => void;
+  // Student site only: Why is the last capture step there, so the primary
+  // button saves directly ("Save") instead of continuing to Surprising.
+  primaryLabel?: string;
+  saving?: boolean;
+  saveError?: string | null;
 }
 
 function mmss(s: number) {
@@ -39,6 +44,9 @@ export function WhyScreen({
   onTranscriptChange,
   onAudioRecorded,
   onNext,
+  primaryLabel = "Continue",
+  saving = false,
+  saveError = null,
 }: WhyScreenProps) {
   const [recState, setRecState] = useState<RecState>(transcript ? "done" : "idle");
   const [dur, setDur] = useState(0);
@@ -457,9 +465,23 @@ export function WhyScreen({
         </div>
       )}
 
+      {saveError && (
+        <p
+          style={{
+            fontSize: "14px",
+            color: "var(--error, #e2483d)",
+            marginTop: "var(--gap-md)",
+            marginBottom: 0,
+          }}
+        >
+          {saveError}
+        </p>
+      )}
+
       <div style={{ marginTop: "var(--gap-lg)" }}>
-        <PillButton onClick={onNext} disabled={!canContinue}>
-          Continue <ArrowIcon size={17} color="#0c0a09" />
+        <PillButton onClick={onNext} disabled={!canContinue || saving}>
+          {saving ? "Saving…" : primaryLabel}
+          {!saving && <ArrowIcon size={17} color="#0c0a09" />}
         </PillButton>
       </div>
     </div>

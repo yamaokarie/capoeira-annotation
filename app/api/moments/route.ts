@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parseAudience, tableFor } from "@/lib/audience";
 
 interface MomentPayload {
   videoId: string;
@@ -34,7 +35,8 @@ interface AirtableMomentRecord {
 export async function POST(request: NextRequest) {
   const token = process.env.AIRTABLE_TOKEN;
   const baseId = process.env.AIRTABLE_BASE_ID;
-  const table = process.env.AIRTABLE_ANNOTATIONS_TABLE || "Annotations";
+  const audience = parseAudience(request.nextUrl.searchParams.get("audience"));
+  const table = tableFor(audience, "annotations");
 
   if (!token || !baseId) {
     return NextResponse.json(
@@ -63,13 +65,20 @@ export async function POST(request: NextRequest) {
       whyMode: body.whyMode || "text",
       transcript: body.transcript || "",
       whyText: body.whyText || "",
-      tags: body.tags || [],
-      // `surprising` is a single-select field in Airtable, not a checkbox —
-      // send its display label ("Yes"/"No"), omit entirely when unanswered.
-      ...(body.surprising !== null && body.surprising !== undefined
-        ? { surprising: body.surprising ? "Yes" : "No" }
+      // The student flow ends at Why — StudentAnnotations has no tags/
+      // surprising/endingType fields, so they're left off entirely there.
+      ...(audience === "expert"
+        ? {
+            tags: body.tags || [],
+            // `surprising` is a single-select field in Airtable, not a
+            // checkbox — send its display label ("Yes"/"No"), omit entirely
+            // when unanswered.
+            ...(body.surprising !== null && body.surprising !== undefined
+              ? { surprising: body.surprising ? "Yes" : "No" }
+              : {}),
+            endingType: body.endingType ?? null,
+          }
         : {}),
-      endingType: body.endingType ?? null,
     },
   };
 
