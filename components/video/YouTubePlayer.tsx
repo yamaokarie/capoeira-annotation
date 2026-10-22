@@ -2,6 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { SpeakerIcon } from "@/components/ui/icons";
+import { isVerticalVideo } from "@/lib/videoOrientation";
 
 declare global {
   interface Window {
@@ -125,6 +126,9 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
     const [muted, setMuted] = useState(true);
     const mutedRef = useRef(muted);
     const [freezeHintVisible, setFreezeHintVisible] = useState(false);
+    // A vertical video only fills a narrow pillar of the 16:9 frame, so the
+    // full-size freeze hint would overhang it — shrunk to 70% there.
+    const [vertical, setVertical] = useState(false);
 
     useImperativeHandle(ref, () => ({
       getCurrentTime: () =>
@@ -246,6 +250,17 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
         clearTimeout(hintTimer);
         playerRef.current?.destroy();
         playerRef.current = null;
+      };
+    }, [youtubeId]);
+
+    useEffect(() => {
+      let cancelled = false;
+      setVertical(false);
+      isVerticalVideo(youtubeId).then((v) => {
+        if (!cancelled) setVertical(v);
+      });
+      return () => {
+        cancelled = true;
       };
     }, [youtubeId]);
 
@@ -418,7 +433,10 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
                   position: "absolute",
                   bottom: "16px",
                   left: "50%",
-                  transform: "translateX(-50%)",
+                  transform: vertical
+                    ? "translateX(-50%) scale(0.7)"
+                    : "translateX(-50%)",
+                  transformOrigin: "bottom center",
                   display: "flex",
                   alignItems: "center",
                   gap: "9px",
