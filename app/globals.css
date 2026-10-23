@@ -884,6 +884,44 @@ body {
   cursor: not-allowed;
 }
 
+/* Password gate (app/login/page.tsx) — reuses the svs-* card above, with
+   the form sitting under the header instead of the jogo list. */
+.svs-gate-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  margin-top: var(--gap-lg);
+}
+/* The amber "fill me in" underline is for the name field's soft nudge;
+   here the field is required and focused, so keep it neutral. */
+.svs-gate-input:placeholder-shown {
+  border-bottom-color: var(--hairline-strong);
+}
+.svs-gate-input:placeholder-shown:focus {
+  border-bottom-color: var(--on-dark);
+}
+.svs-gate-submit {
+  margin-top: var(--gap-lg);
+  width: 100%;
+  height: var(--height-button);
+  border-radius: var(--radius-pill);
+  background: var(--on-dark);
+  color: var(--ink);
+  border: none;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+@media (min-width: 1024px) {
+  .svs-content.svs-gate {
+    display: flex;
+    max-width: 412px;
+    justify-content: center;
+    gap: 0;
+  }
+}
+
 /* Desktop (>=1024px): SelectVideoScreen drops the centered 412x880 dark
    card and becomes a full-bleed two-column layout sitting directly on
    .svs-page's dark background (same var(--ink) + blurred orbs texture as
