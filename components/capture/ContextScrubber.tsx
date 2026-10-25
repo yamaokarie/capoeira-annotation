@@ -8,6 +8,12 @@ const TAG_EDGE_MARGIN_PX = 8;
 // Must match .context-scrub-input's thumb width/dot size in globals.css.
 const THUMB_WIDTH_PX = 20;
 const DOT_SIZE_PX = 10;
+// Invisible grab area around each start/end dot — wider than the dot so
+// it's easy to catch with a finger.
+const MARKER_HIT_PX = 32;
+// When the two dots overlap, the first horizontal move this far decides
+// which one is being grabbed (right → end, left → start).
+const TIE_DECIDE_PX = 3;
 
 // A native range input's thumb doesn't travel the full track width — its
 // *center* travels from thumbWidth/2 (at min) to trackWidth - thumbWidth/2
@@ -121,6 +127,19 @@ export function ContextScrubber({
     : endAt === null || value <= endAt - MIN_SPAN_SECONDS;
 
   const [dragging, setDragging] = useState(false);
+  // Grabbing a start/end dot directly (rather than the playhead thumb)
+  // drags that point and selects it for editing. `grabbed.at` is where it
+  // was released: the dot stays drawn there (instead of at its saved
+  // position) only while the playhead is still at that spot and the
+  // commit tag is up, so any other seek/nudge/playback puts it back.
+  const [markerDragging, setMarkerDragging] = useState(false);
+  const [grabbed, setGrabbed] = useState<{ point: "start" | "end"; at: number } | null>(null);
+  const markerDrag = useRef<{
+    point: "start" | "end" | null;
+    offsetPx: number;
+    downX: number;
+    lastValue: number;
+  } | null>(null);
   const [nudgeCooldown, setNudgeCooldown] = useState(false);
   const nudgeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -166,6 +185,7 @@ export function ContextScrubber({
   const showReposition =
     canReposition &&
     !dragging &&
+    !markerDragging &&
     !playing &&
     !nudgeCooldown &&
     validTarget &&
@@ -186,10 +206,84 @@ export function ContextScrubber({
     setTagLeft(left);
   }, [showReposition, valueFrac, value, containerWidth]);
 
-  const dotCenter = containerWidth ? thumbCenterPx(dotFrac, containerWidth) : 0;
+  const showGrabbedAt = (point: "start" | "end") =>
+    grabbed?.point === point &&
+    (markerDragging || (showReposition && Math.abs(value - grabbed.at) < 0.05));
+  const startFrac = showGrabbedAt("start") ? valueFrac : dotFrac;
+  const shownEndFrac = endFrac !== null && showGrabbedAt("end") ? valueFrac : endFrac;
+  const dotCenter = containerWidth ? thumbCenterPx(startFrac, containerWidth) : 0;
   const dotLeft = dotCenter - DOT_SIZE_PX / 2;
   const endCenter =
-    containerWidth && endFrac !== null ? thumbCenterPx(endFrac, containerWidth) : null;
+    containerWidth && shownEndFrac !== null ? thumbCenterPx(shownEndFrac, containerWidth) : null;
+
+  // Inverse of thumbCenterPx, snapped to the input's 0.1s step.
+  const valueAtX = (clientX: number) => {
+    const rect = trackWrapRef.current?.getBoundingClientRect();
+    if (!rect) return value;
+    const frac = (clientX - rect.left - THUMB_WIDTH_PX / 2) / (rect.width - THUMB_WIDTH_PX);
+    const clamped = Math.min(1, Math.max(0, frac));
+    return Math.min(max, Math.round(clamped * max * 10) / 10);
+  };
+
+  const onMarkerPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!containerWidth) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const rect = trackWrapRef.current!.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const dStart = Math.abs(x - dotCenter);
+    const dEnd = endCenter === null ? Infinity : Math.abs(x - endCenter);
+    // Overlapping dots: wait for the first move to tell which is meant.
+    const point = Math.abs(dStart - dEnd) < 2 ? null : dStart < dEnd ? "start" : "end";
+    const center = point === "end" ? endCenter! : dotCenter;
+    markerDrag.current = { point, offsetPx: x - center, downX: e.clientX, lastValue: value };
+    if (point) setEditing(point);
+    setGrabbed(point ? { point, at: value } : null);
+    setNudgeCooldown(false);
+    setMarkerDragging(true);
+  };
+
+  const onMarkerPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = markerDrag.current;
+    if (!drag) return;
+    if (!drag.point) {
+      const dx = e.clientX - drag.downX;
+      if (Math.abs(dx) < TIE_DECIDE_PX) return;
+      drag.point = dx > 0 ? "end" : "start";
+      setEditing(drag.point);
+      setGrabbed({ point: drag.point, at: value });
+    }
+    const next = valueAtX(e.clientX - drag.offsetPx);
+    drag.lastValue = next;
+    onSeek(next);
+  };
+
+  const onMarkerPointerUp = () => {
+    const drag = markerDrag.current;
+    markerDrag.current = null;
+    setMarkerDragging(false);
+    setGrabbed(drag?.point ? { point: drag.point, at: drag.lastValue } : null);
+  };
+
+  const markerHitTarget = (center: number) => (
+    <div
+      aria-hidden
+      onPointerDown={onMarkerPointerDown}
+      onPointerMove={onMarkerPointerMove}
+      onPointerUp={onMarkerPointerUp}
+      onPointerCancel={onMarkerPointerUp}
+      style={{
+        position: "absolute",
+        top: 0,
+        bottom: 0,
+        left: `${center - MARKER_HIT_PX / 2}px`,
+        width: `${MARKER_HIT_PX}px`,
+        cursor: markerDragging ? "grabbing" : "grab",
+        touchAction: "none",
+        zIndex: 1,
+      }}
+    />
+  );
 
   const addEnd = () => {
     const end =
@@ -319,6 +413,10 @@ export function ContextScrubber({
             }}
           />
         </div>
+        {/* Grab areas over the dots (Why only) — above the input so a
+            grab here drags that point instead of the playhead thumb. */}
+        {canReposition && markerHitTarget(dotCenter)}
+        {canReposition && endCenter !== null && markerHitTarget(endCenter)}
         {endCenter !== null && (
           <div
             aria-hidden
