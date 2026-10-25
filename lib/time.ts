@@ -13,3 +13,11 @@ export function formatPreciseTime(secs: number): string {
   }
   return `${mins}:${sec.toFixed(1).padStart(4, "0")}`;
 }
+
+// The moment's label as saved to Airtable and shown on the Done screen —
+// a single time, or a range once an optional out point is set.
+export function formatMomentLabel(start: number, end: number | null): string {
+  return end === null
+    ? formatPreciseTime(start)
+    : `${formatPreciseTime(start)}–${formatPreciseTime(end)}`;
+}

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DM_Sans, Inter, Source_Serif_4 } from "next/font/google";
+import { DM_Sans, Geist, Inter, Source_Serif_4 } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -11,6 +11,12 @@ const inter = Inter({
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
   subsets: ["latin"],
+});
+
+const geist = Geist({
+  variable: "--font-geist",
+  subsets: ["latin"],
+  weight: "400",
 });
 
 const sourceSerif = Source_Serif_4({
@@ -35,7 +41,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${dmSans.variable} ${sourceSerif.variable} ${bogueBlack.variable}`}
+      className={`${inter.variable} ${dmSans.variable} ${geist.variable} ${sourceSerif.variable} ${bogueBlack.variable}`}
     >
       <body className="min-h-full">
         <div className="relative mx-auto min-h-screen app-shell">

@@ -2,6 +2,8 @@ import { ArrowIcon, CloseIcon } from "@/components/ui/icons";
 
 interface CaptureTopbarProps {
   frozenAt?: number | null;
+  // Optional out point — appended to the badge as a range when set.
+  endAt?: number | null;
   formatTime?: (secs: number) => string;
   onCancel: () => void;
   // Desktop (>=1024px) only — see .capture-topbar-back in globals.css.
@@ -19,7 +21,7 @@ interface CaptureTopbarProps {
   variant?: "full" | "back" | "frozenBadge" | "close";
 }
 
-export function CaptureTopbar({ frozenAt, formatTime, onCancel, onBack, variant = "full" }: CaptureTopbarProps) {
+export function CaptureTopbar({ frozenAt, endAt, formatTime, onCancel, onBack, variant = "full" }: CaptureTopbarProps) {
   const backButton = onBack ? (
     <button
       className="icon-btn capture-topbar-back"
@@ -77,6 +79,7 @@ export function CaptureTopbar({ frozenAt, formatTime, onCancel, onBack, variant 
           }}
         />
         Frozen · {formatTime(frozenAt)}
+        {endAt != null && <> → {formatTime(endAt)}</>}
       </div>
     ) : null;
 
@@ -154,10 +157,14 @@ export function CaptureTopbar({ frozenAt, formatTime, onCancel, onBack, variant 
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
+        gap: "var(--gap-sm)",
         marginBottom: "16px",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--gap-sm)" }}>
+      {/* minWidth 0 lets a long badge (a start → end range on a narrow
+          phone) wrap inside its own space instead of running into the
+          close button. */}
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--gap-sm)", minWidth: 0 }}>
         {backButton}
         {frozenBadge || <span />}
       </div>

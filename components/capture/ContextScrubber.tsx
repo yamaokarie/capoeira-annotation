@@ -41,6 +41,12 @@ interface ContextScrubberProps {
   // nudging, or resuming/pausing native playback must only preview (via
   // onSeek) and never surface the "Move freeze to" commit affordance.
   canReposition: boolean;
+  // Optional out point. null (the default) keeps the moment a single
+  // instant and the scrubber looks as it always has; "Add end point"
+  // (Why only) sets one, after which the same drag/nudge/commit-tag flow
+  // edits whichever of start/end is selected.
+  endAt: number | null;
+  onSetEnd: (seconds: number | null) => void;
 }
 
 const NUDGE_BUTTON_STYLE: CSSProperties = {
@@ -63,6 +69,25 @@ const NUDGE_BUTTON_STYLE: CSSProperties = {
 // clear "I've stopped" moment (pointerup / playing turning false).
 const NUDGE_SETTLE_DELAY_MS = 700;
 
+// Where "Add end point" drops the end when the playhead hasn't been moved
+// past the freeze point — a plausible length for one exchange.
+const DEFAULT_SPAN_SECONDS = 3;
+
+// Start and end must stay at least this far apart.
+const MIN_SPAN_SECONDS = 0.1;
+
+const SEGMENT_BUTTON_STYLE: CSSProperties = {
+  background: "transparent",
+  border: "none",
+  borderRadius: "var(--radius-pill)",
+  cursor: "pointer",
+  fontSize: "13px",
+  fontWeight: 500,
+  padding: "6px 14px",
+  fontVariantNumeric: "tabular-nums",
+  whiteSpace: "nowrap",
+};
+
 // Timeline showing the frozen moment (fixed, pulsating red dot) under the
 // video, plus: a draggable head (tracks live playback so it stays visible
 // even if the video is resumed via its own native controls) and a row of
@@ -78,10 +103,22 @@ export function ContextScrubber({
   playing,
   onRepositionFreeze,
   canReposition,
+  endAt,
+  onSetEnd,
 }: ContextScrubberProps) {
-  const max = duration || Math.max(frozenAt, 1);
+  const max = duration || Math.max(frozenAt, endAt ?? 0, 1);
   const dotFrac = Math.min(1, frozenAt / max);
   const valueFrac = Math.min(1, value / max);
+  const endFrac = endAt === null ? null : Math.min(1, endAt / max);
+
+  const [editing, setEditing] = useState<"start" | "end">("start");
+  const editingEnd = editing === "end" && endAt !== null;
+  const target = editingEnd ? endAt : frozenAt;
+  // A commit that would put start at/after end (or end at/before start) is
+  // never offered.
+  const validTarget = editingEnd
+    ? value >= frozenAt + MIN_SPAN_SECONDS
+    : endAt === null || value <= endAt - MIN_SPAN_SECONDS;
 
   const [dragging, setDragging] = useState(false);
   const [nudgeCooldown, setNudgeCooldown] = useState(false);
@@ -131,7 +168,8 @@ export function ContextScrubber({
     !dragging &&
     !playing &&
     !nudgeCooldown &&
-    Math.abs(value - frozenAt) > 0.4;
+    validTarget &&
+    Math.abs(value - target) > 0.4;
   const atMin = value <= 0;
   const atMax = value >= max;
 
@@ -148,9 +186,36 @@ export function ContextScrubber({
     setTagLeft(left);
   }, [showReposition, valueFrac, value, containerWidth]);
 
-  const dotLeft = containerWidth
-    ? thumbCenterPx(dotFrac, containerWidth) - DOT_SIZE_PX / 2
-    : 0;
+  const dotCenter = containerWidth ? thumbCenterPx(dotFrac, containerWidth) : 0;
+  const dotLeft = dotCenter - DOT_SIZE_PX / 2;
+  const endCenter =
+    containerWidth && endFrac !== null ? thumbCenterPx(endFrac, containerWidth) : null;
+
+  const addEnd = () => {
+    const end =
+      value - frozenAt > 0.4 ? value : Math.min(max, frozenAt + DEFAULT_SPAN_SECONDS);
+    onSetEnd(end);
+    onSeek(end);
+    setEditing("end");
+  };
+
+  const removeEnd = () => {
+    onSetEnd(null);
+    setEditing("start");
+    onSeek(frozenAt);
+  };
+
+  const selectSegment = (segment: "start" | "end") => {
+    setEditing(segment);
+    onSeek(segment === "end" && endAt !== null ? endAt : frozenAt);
+  };
+
+  const commit = () => {
+    if (editingEnd) onSetEnd(value);
+    else onRepositionFreeze(value);
+  };
+
+  const pointName = editingEnd ? "end" : "freeze";
 
   return (
     <div
@@ -167,6 +232,24 @@ export function ContextScrubber({
           the dot's `top: 50%` needs to center on the track alone, not on
           the track plus the nudge-button row below it. */}
       <div ref={trackWrapRef} style={{ position: "relative" }}>
+        {/* Shaded span from the freeze point to the out point. Before the
+            input in DOM order (and the input positioned) so it paints
+            behind the thumb but shows through the translucent track. */}
+        {endCenter !== null && (
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: `${dotCenter}px`,
+              width: `${Math.max(0, endCenter - dotCenter)}px`,
+              height: "6px",
+              transform: "translateY(-50%)",
+              backgroundColor: "rgba(226, 72, 61, 0.7)",
+              pointerEvents: "none",
+            }}
+          />
+        )}
         <input
           type="range"
           className={dragging ? "context-scrub-input is-dragging" : "context-scrub-input"}
@@ -177,14 +260,14 @@ export function ContextScrubber({
           onChange={(e) => onSeek(Number(e.target.value))}
           onPointerDown={() => setDragging(true)}
           onPointerUp={() => setDragging(false)}
-          style={{ display: "block" }}
+          style={{ display: "block", position: "relative" }}
           aria-label="Scrub surrounding context"
         />
         {showReposition && (
           <button
             ref={tagRef}
             className="reposition-tag"
-            onClick={() => onRepositionFreeze(value)}
+            onClick={commit}
             style={{
               position: "absolute",
               top: "-38px",
@@ -203,7 +286,7 @@ export function ContextScrubber({
               animation: "reposition-tag-in 0.15s ease-out",
             }}
           >
-            Move freeze to {formatPreciseTime(value)}
+            {editingEnd ? "Set end to" : "Move freeze to"} {formatPreciseTime(value)}
           </button>
         )}
         {/* pointerEvents: none so this (and the reposition tag above it,
@@ -236,48 +319,139 @@ export function ContextScrubber({
             }}
           />
         </div>
+        {endCenter !== null && (
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: `${endCenter - DOT_SIZE_PX / 2}px`,
+              transform: "translateY(-50%)",
+              width: `${DOT_SIZE_PX}px`,
+              height: `${DOT_SIZE_PX}px`,
+              borderRadius: "50%",
+              backgroundColor: "var(--cream)",
+              boxShadow: "0 0 0 2px #e2483d, 0 1px 4px rgba(0, 0, 0, 0.4)",
+              pointerEvents: "none",
+              zIndex: 1,
+            }}
+          />
+        )}
       </div>
+      {/* Nudges sit centered in the middle column; the add-end / Start|End
+          row below starts at the nudges' left edge and may run on into the
+          right-hand column. */}
       <div
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "8px",
+          display: "grid",
+          gridTemplateColumns: "1fr auto 1fr",
           marginTop: "var(--gap-md)",
         }}
       >
-        <button
-          onClick={() => nudge(-1)}
-          disabled={atMin}
-          aria-label="Nudge freeze back 1 second"
-          style={{ ...NUDGE_BUTTON_STYLE, opacity: atMin ? 0.35 : 1 }}
+        <div
+          style={{
+            gridColumn: "2",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+          }}
         >
-          −1s
-        </button>
-        <button
-          onClick={() => nudge(-0.1)}
-          disabled={atMin}
-          aria-label="Nudge freeze back 0.1 seconds"
-          style={{ ...NUDGE_BUTTON_STYLE, opacity: atMin ? 0.35 : 1 }}
-        >
-          −0.1s
-        </button>
-        <button
-          onClick={() => nudge(0.1)}
-          disabled={atMax}
-          aria-label="Nudge freeze forward 0.1 seconds"
-          style={{ ...NUDGE_BUTTON_STYLE, opacity: atMax ? 0.35 : 1 }}
-        >
-          +0.1s
-        </button>
-        <button
-          onClick={() => nudge(1)}
-          disabled={atMax}
-          aria-label="Nudge freeze forward 1 second"
-          style={{ ...NUDGE_BUTTON_STYLE, opacity: atMax ? 0.35 : 1 }}
-        >
-          +1s
-        </button>
+          <button
+            onClick={() => nudge(-1)}
+            disabled={atMin}
+            aria-label={`Nudge ${pointName} back 1 second`}
+            style={{ ...NUDGE_BUTTON_STYLE, opacity: atMin ? 0.35 : 1 }}
+          >
+            −1s
+          </button>
+          <button
+            onClick={() => nudge(-0.1)}
+            disabled={atMin}
+            aria-label={`Nudge ${pointName} back 0.1 seconds`}
+            style={{ ...NUDGE_BUTTON_STYLE, opacity: atMin ? 0.35 : 1 }}
+          >
+            −0.1s
+          </button>
+          <button
+            onClick={() => nudge(0.1)}
+            disabled={atMax}
+            aria-label={`Nudge ${pointName} forward 0.1 seconds`}
+            style={{ ...NUDGE_BUTTON_STYLE, opacity: atMax ? 0.35 : 1 }}
+          >
+            +0.1s
+          </button>
+          <button
+            onClick={() => nudge(1)}
+            disabled={atMax}
+            aria-label={`Nudge ${pointName} forward 1 second`}
+            style={{ ...NUDGE_BUTTON_STYLE, opacity: atMax ? 0.35 : 1 }}
+          >
+            +1s
+          </button>
+        </div>
+        {/* Rows below the nudges each start at the nudges' left edge
+            (columns 2–3) and may run on into the right-hand column. The
+            add/remove text buttons sit on their own row, 28px down. */}
+        {canReposition && endAt === null && (
+          <button
+            className="scrub-text-btn"
+            onClick={addEnd}
+            disabled={frozenAt >= max - MIN_SPAN_SECONDS}
+            style={{ gridColumn: "2 / 4", justifySelf: "start", marginTop: "28px" }}
+          >
+            Add end point
+          </button>
+        )}
+        {/* "Remove end" sits right of the chip, wrapping under it only if
+            a very narrow phone has no room. */}
+        {canReposition && endAt !== null && (
+          <div
+            style={{
+              gridColumn: "2 / 4",
+              justifySelf: "start",
+              marginTop: "var(--gap-md)",
+              display: "flex",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "var(--gap-sm) var(--gap-md)",
+            }}
+          >
+            <div
+              role="group"
+              aria-label="Point to adjust"
+              style={{
+                display: "inline-flex",
+                padding: "3px",
+                borderRadius: "var(--radius-pill)",
+                background: "rgba(255, 255, 255, 0.07)",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+              }}
+            >
+              {(["start", "end"] as const).map((segment) => {
+                const selected = (segment === "end") === editingEnd;
+                return (
+                  <button
+                    key={segment}
+                    onClick={() => selectSegment(segment)}
+                    aria-pressed={selected}
+                    style={{
+                      ...SEGMENT_BUTTON_STYLE,
+                      background: selected ? "var(--cream)" : "transparent",
+                      color: selected ? "#0c0a09" : "#b5a898",
+                    }}
+                  >
+                    {segment === "start" ? "Start" : "End"}{" "}
+                    {formatPreciseTime(segment === "start" ? frozenAt : endAt)}
+                  </button>
+                );
+              })}
+            </div>
+            <button className="scrub-text-btn" onClick={removeEnd} aria-label="Remove end point">
+              Remove end
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
