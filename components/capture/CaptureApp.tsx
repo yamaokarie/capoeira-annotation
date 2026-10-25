@@ -13,6 +13,7 @@ import { ContextScrubber } from "@/components/capture/ContextScrubber";
 import { YouTubePlayer } from "@/components/video/YouTubePlayer";
 import type { YouTubePlayerHandle } from "@/components/video/YouTubePlayer";
 import { CaptureTopbar } from "@/components/capture/CaptureTopbar";
+import { formatMomentLabel } from "@/lib/time";
 import { CloseIcon } from "@/components/ui/icons";
 import { useCaptureState } from "@/hooks/useCaptureState";
 import { useVideoPlayer } from "@/hooks/useVideoPlayer";
@@ -232,7 +233,8 @@ export function CaptureApp({ audience }: { audience: Audience }) {
           videoId: captureState.selectedVideo,
           videoTitle: selectedVideoData?.videoTitle,
           momentTimestamp: captureState.frozenAt,
-          momentLabel: videoPlayer.formatPreciseTime(captureState.frozenAt),
+          momentEndTimestamp: captureState.endAt,
+          momentLabel: formatMomentLabel(captureState.frozenAt, captureState.endAt),
           annotatorName: captureState.annotatorName,
           whyMode,
           transcript,
@@ -302,6 +304,7 @@ export function CaptureApp({ audience }: { audience: Audience }) {
     isCapturePhase ? (
       <CaptureTopbar
         frozenAt={captureState.frozenAt}
+        endAt={captureState.endAt}
         formatTime={videoPlayer.formatPreciseTime}
         onCancel={handleCancel}
         onBack={topbarOnBack}
@@ -365,6 +368,8 @@ export function CaptureApp({ audience }: { audience: Audience }) {
           onSeek={handleSeek}
           playing={videoPlaying}
           onRepositionFreeze={handleRepositionFreeze}
+          endAt={captureState.endAt}
+          onSetEnd={captureState.setEndAt}
           // Only Why lets the user move the frozen moment — Surprising/
           // Tags/Ending/Done keep the video+scrubber mounted for
           // continuity, but it's preview-only there (see ContextScrubber's
@@ -443,7 +448,7 @@ export function CaptureApp({ audience }: { audience: Audience }) {
       {captureState.phase === "done" && captureState.frozenAt !== null && (
         <DoneScreen
           phase={captureState.phase}
-          momentLabel={videoPlayer.formatPreciseTime(captureState.frozenAt)}
+          momentLabel={formatMomentLabel(captureState.frozenAt, captureState.endAt)}
           onBackToJogo={() => {
             captureState.resetForNextMoment();
             videoPlayer.setPlaying(true);
@@ -535,6 +540,7 @@ export function CaptureApp({ audience }: { audience: Audience }) {
                   <CaptureTopbar
                     variant="frozenBadge"
                     frozenAt={captureState.frozenAt}
+                    endAt={captureState.endAt}
                     formatTime={videoPlayer.formatPreciseTime}
                     onCancel={handleCancel}
                   />

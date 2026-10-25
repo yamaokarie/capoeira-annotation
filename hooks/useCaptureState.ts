@@ -28,6 +28,9 @@ export function useCaptureState(storageKey = "capoeira-capture-state") {
   const [annotatorName, setAnnotatorName] = useState("");
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [frozenAt, setFrozenAt] = useState<number | null>(null);
+  // Optional out point — null means the moment is a single instant (the
+  // default; annotators only set this if they want a span).
+  const [endAt, setEndAt] = useState<number | null>(null);
   const [answers, setAnswers] = useState<Answers>(initialAnswers);
   // False until the saved draft (if any) has been read back from
   // localStorage — gates the save effect below so the first render's empty
@@ -41,12 +44,14 @@ export function useCaptureState(storageKey = "capoeira-capture-state") {
   const resetForNextMoment = () => {
     setPhase("playing");
     setFrozenAt(null);
+    setEndAt(null);
     setAnswers(initialAnswers);
   };
 
   const cancel = () => {
     setPhase("playing");
     setFrozenAt(null);
+    setEndAt(null);
     setAnswers(initialAnswers);
   };
 
@@ -62,6 +67,7 @@ export function useCaptureState(storageKey = "capoeira-capture-state") {
     setPhase("select");
     setSelectedVideo(null);
     setFrozenAt(null);
+    setEndAt(null);
     setAnswers(initialAnswers);
   };
 
@@ -84,6 +90,9 @@ export function useCaptureState(storageKey = "capoeira-capture-state") {
           if (savedFrozenAt !== null && CAPTURE_PHASES.includes(saved.phase)) {
             setPhase(saved.phase);
             setFrozenAt(savedFrozenAt);
+            if (typeof saved.endAt === "number" && saved.endAt > savedFrozenAt) {
+              setEndAt(saved.endAt);
+            }
             setAnswers({ ...initialAnswers, ...saved.answers });
           } else {
             setPhase("playing");
@@ -99,13 +108,13 @@ export function useCaptureState(storageKey = "capoeira-capture-state") {
 
   useEffect(() => {
     if (!hydrated) return;
-    const state = { phase, annotatorName, selectedVideo, frozenAt, answers };
+    const state = { phase, annotatorName, selectedVideo, frozenAt, endAt, answers };
     try {
       localStorage.setItem(storageKey, JSON.stringify(state));
     } catch {
       // Storage full/blocked — the draft just won't survive a reload.
     }
-  }, [hydrated, storageKey, phase, annotatorName, selectedVideo, frozenAt, answers]);
+  }, [hydrated, storageKey, phase, annotatorName, selectedVideo, frozenAt, endAt, answers]);
 
   return {
     hydrated,
@@ -117,6 +126,8 @@ export function useCaptureState(storageKey = "capoeira-capture-state") {
     setSelectedVideo,
     frozenAt,
     setFrozenAt,
+    endAt,
+    setEndAt,
     answers,
     updateAnswer,
     resetForNextMoment,

@@ -5,6 +5,7 @@ interface MomentPayload {
   videoId: string;
   videoTitle: string;
   momentTimestamp: number;
+  momentEndTimestamp: number | null;
   momentLabel: string;
   annotatorName: string;
   whyMode: "voice" | "text";
@@ -21,6 +22,7 @@ interface AirtableMomentRecord {
     videoId?: string;
     videoTitle?: string;
     momentTimestamp?: number;
+    momentEndTimestamp?: number;
     momentLabel?: string;
     annotatorName?: string;
     whyMode?: string;
@@ -60,6 +62,11 @@ export async function POST(request: NextRequest) {
       videoId: body.videoId,
       videoTitle: body.videoTitle || "",
       momentTimestamp: body.momentTimestamp,
+      // Optional out point — left blank (omitted) for single-instant moments.
+      ...(typeof body.momentEndTimestamp === "number" &&
+      body.momentEndTimestamp > body.momentTimestamp
+        ? { momentEndTimestamp: body.momentEndTimestamp }
+        : {}),
       momentLabel: body.momentLabel || "",
       annotatorName: body.annotatorName || "",
       whyMode: body.whyMode || "text",
