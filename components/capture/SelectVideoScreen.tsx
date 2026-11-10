@@ -4,6 +4,9 @@ import { useState } from "react";
 import type { Video } from "@/lib/types";
 import type { Audience } from "@/lib/audience";
 import { ENTRY_ORBS } from "@/components/capture/entryOrbs";
+import { VideoThumbnail } from "@/components/ui/VideoThumbnail";
+import { ChevronIcon, PlusIcon } from "@/components/ui/icons";
+import { useVideoOrientation } from "@/hooks/useVideoOrientation";
 
 interface SelectVideoScreenProps {
   audience: Audience;
@@ -16,8 +19,28 @@ interface SelectVideoScreenProps {
   onStartAnnotating: (videoId: string) => void;
 }
 
-function formatMeta(video: Video): string {
-  return [video.style, video.context, video.aspect].filter(Boolean).join(" · ");
+function VideoRow({ video, onSelect }: { video: Video; onSelect: () => void }) {
+  const orientation = useVideoOrientation(video.youtubeId, video.aspect);
+  const meta = [video.channelName, video.durationLabel, video.style, video.context]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <button type="button" className="svs-jogo-card" onClick={onSelect}>
+      <VideoThumbnail
+        src={video.thumbnailUrl}
+        orientation={orientation}
+        durationLabel={video.durationLabel}
+      />
+      <span className="svs-jogo-info">
+        <span className="svs-jogo-title">{video.videoTitle}</span>
+        <span className="svs-jogo-meta">{meta}</span>
+      </span>
+      <span aria-hidden className="svs-jogo-chevron">
+        <ChevronIcon size={18} />
+      </span>
+    </button>
+  );
 }
 
 export function SelectVideoScreen({
@@ -123,7 +146,14 @@ export function SelectVideoScreen({
 
           <div className="svs-scroll">
             <section className="svs-section">
-              <div className="svs-section-label">{isStudent ? "Pick a roda" : "Pick a jogo"}</div>
+              <div className="svs-list-head">
+                <div className="svs-section-label">{isStudent ? "Pick a roda" : "Pick a jogo"}</div>
+                {!loading && !error && videos.length > 0 && (
+                  <span className="svs-list-count">
+                    {videos.length} {videos.length === 1 ? "video" : "videos"}
+                  </span>
+                )}
+              </div>
               {loading ? (
                 <p className="svs-status-message">Loading videos&hellip;</p>
               ) : error ? (
@@ -133,30 +163,11 @@ export function SelectVideoScreen({
               ) : (
                 <div className="svs-jogo-list">
                   {videos.map((video) => (
-                    <button
+                    <VideoRow
                       key={video.videoId}
-                      type="button"
-                      className="svs-jogo-card"
-                      onClick={() => onStartAnnotating(video.videoId)}
-                    >
-                      <span className="svs-thumb">
-                        {video.thumbnailUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={video.thumbnailUrl} alt="" />
-                        ) : (
-                          <span className="svs-thumb-placeholder" />
-                        )}
-                        {video.durationLabel && (
-                          <span className="svs-duration-chip">{video.durationLabel}</span>
-                        )}
-                      </span>
-                      <span className="svs-jogo-info">
-                        <span className="svs-jogo-title">{video.videoTitle}</span>
-                        {formatMeta(video) && (
-                          <span className="svs-jogo-meta">{formatMeta(video)}</span>
-                        )}
-                      </span>
-                    </button>
+                      video={video}
+                      onSelect={() => onStartAnnotating(video.videoId)}
+                    />
                   ))}
                 </div>
               )}
@@ -164,14 +175,23 @@ export function SelectVideoScreen({
 
             <section className="svs-section svs-section-last">
               <div className="svs-section-label">Or bring your own</div>
-              <div className="svs-own-row">
-                <input
-                  className="svs-url-input"
-                  type="text"
-                  placeholder="Paste a YouTube link"
-                  value={youtubeUrl}
-                  onChange={(e) => setYoutubeUrl(e.target.value)}
-                />
+              {/* A <label> so a tap anywhere on the row (icon, helper text)
+                  focuses the link field. The Add button is interactive in
+                  its own right, so tapping it still just clicks it. */}
+              <label className="svs-own-row">
+                <span aria-hidden className="svs-own-icon">
+                  <PlusIcon size={16} />
+                </span>
+                <span className="svs-own-fields">
+                  <input
+                    className="svs-url-input"
+                    type="text"
+                    placeholder="Paste a YouTube link"
+                    value={youtubeUrl}
+                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                  />
+                  <span className="svs-own-helper">Public or unlisted videos</span>
+                </span>
                 <button
                   type="button"
                   className="svs-add-pill"
@@ -180,7 +200,7 @@ export function SelectVideoScreen({
                 >
                   {adding ? "Adding…" : "Add"}
                 </button>
-              </div>
+              </label>
               {addError && <p className="svs-status-message svs-status-error">{addError}</p>}
             </section>
           </div>

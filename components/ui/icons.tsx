@@ -138,3 +138,36 @@ export function ArrowIcon({ size = 18, color = "currentColor" }: IconProps) {
     </svg>
   );
 }
+
+export function ChevronIcon({ size = 18, color = "currentColor" }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9.5 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+export function PlusIcon({ size = 18, color = "currentColor" }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    >
+      <path d="M12 5.5v13M5.5 12h13" />
+    </svg>
+  );
+}
