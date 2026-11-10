@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseAudience, tableFor } from "@/lib/audience";
 
 interface AirtableVideoRecord {
+  createdTime?: string;
   fields: {
     videoId?: string;
     videoTitle?: string;
@@ -26,23 +27,35 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const response = await fetch(
-      `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    // Airtable returns records in no guaranteed order without a view or
+    // sort, so fetch every page and sort newest-first by createdTime (which
+    // Airtable sets on every record) — newly added videos land on top.
+    const records: AirtableVideoRecord[] = [];
+    let offset: string | undefined;
+    do {
+      const url = new URL(
+        `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}`
+      );
+      if (offset) url.searchParams.set("offset", offset);
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error(`Airtable API error: ${response.statusText}`);
       }
+      const page: { records: AirtableVideoRecord[]; offset?: string } =
+        await response.json();
+      records.push(...page.records);
+      offset = page.offset;
+    } while (offset);
+
+    records.sort((a, b) =>
+      (b.createdTime ?? "").localeCompare(a.createdTime ?? "")
     );
 
-    if (!response.ok) {
-      throw new Error(`Airtable API error: ${response.statusText}`);
-    }
-
-    const data: { records: AirtableVideoRecord[] } = await response.json();
     const videos = await Promise.all(
-      data.records.map(async (record) => ({
+      records.map(async (record) => ({
         videoId: record.fields.videoId,
         videoTitle: record.fields.videoTitle,
         youtubeId: record.fields.youtubeId,
