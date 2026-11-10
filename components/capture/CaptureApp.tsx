@@ -132,6 +132,30 @@ export function CaptureApp({ audience }: { audience: Audience }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videosLoading, videos, captureState.selectedVideo]);
 
+  // Deep link from the reader app: `?video=<videoId>` opens that video
+  // straight on Playing, skipping the Select screen. Read once, after the
+  // draft is restored and the list has loaded. A draft already in progress
+  // on that same video is kept; otherwise the link wins. The param is then
+  // stripped so a reload doesn't re-apply it over newer progress.
+  const deepLinkHandled = useRef(false);
+  useEffect(() => {
+    if (deepLinkHandled.current || !captureState.hydrated || videosLoading) return;
+    deepLinkHandled.current = true;
+    const url = new URL(window.location.href);
+    const linkedVideo = url.searchParams.get("video");
+    if (!linkedVideo) return;
+    url.searchParams.delete("video");
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+    if (!videos.some((v) => v.videoId === linkedVideo)) return;
+    const continuingDraft =
+      captureState.selectedVideo === linkedVideo && captureState.phase !== "select";
+    if (continuingDraft) return;
+    captureState.backToSelect();
+    captureState.setSelectedVideo(linkedVideo);
+    captureState.setPhase("playing");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [captureState.hydrated, videosLoading, videos]);
+
   // Poll the real player position while actively playing, to drive the
   // scrub row and give the freeze button an accurate timestamp.
   useEffect(() => {
