@@ -9,6 +9,8 @@ export interface Video {
   aspect?: string;
   durationLabel?: string;
   thumbnailUrl?: string;
+  // YouTube channel that uploaded it, from oEmbed. Absent if the lookup fails.
+  channelName?: string;
 }
 
 export interface AnnotationRecord {

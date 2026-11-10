@@ -41,13 +41,18 @@ export async function GET(request: NextRequest) {
     }
 
     const data: { records: AirtableVideoRecord[] } = await response.json();
-    const videos = data.records.map((record) => ({
-      videoId: record.fields.videoId,
-      videoTitle: record.fields.videoTitle,
-      youtubeId: record.fields.youtubeId,
-      style: record.fields.style,
-      thumbnailUrl: thumbnailUrlFor(record.fields.youtubeId),
-    }));
+    const videos = await Promise.all(
+      data.records.map(async (record) => ({
+        videoId: record.fields.videoId,
+        videoTitle: record.fields.videoTitle,
+        youtubeId: record.fields.youtubeId,
+        style: record.fields.style,
+        thumbnailUrl: thumbnailUrlFor(record.fields.youtubeId),
+        channelName: record.fields.youtubeId
+          ? (await fetchOembed(record.fields.youtubeId))?.author_name?.trim()
+          : undefined,
+      }))
+    );
 
     return NextResponse.json({ videos });
   } catch (error) {
@@ -70,18 +75,27 @@ function extractYoutubeId(url: string): string | null {
   return match ? match[1] : null;
 }
 
-async function fetchYoutubeTitle(youtubeId: string): Promise<string> {
+interface Oembed {
+  title?: string;
+  author_name?: string;
+}
+
+// YouTube's oEmbed gives title and channel name with no API key, for
+// public and unlisted videos (private ones fail → undefined). Cached a day
+// by Next's fetch cache; the timeout keeps a slow YouTube from holding up
+// the whole video list.
+async function fetchOembed(youtubeId: string): Promise<Oembed | undefined> {
   try {
     const res = await fetch(
       `https://www.youtube.com/oembed?url=${encodeURIComponent(
         `https://www.youtube.com/watch?v=${youtubeId}`
-      )}&format=json`
+      )}&format=json`,
+      { next: { revalidate: 86400 }, signal: AbortSignal.timeout(3000) }
     );
-    if (!res.ok) return youtubeId;
-    const data: { title?: string } = await res.json();
-    return data.title || youtubeId;
+    if (!res.ok) return undefined;
+    return (await res.json()) as Oembed;
   } catch {
-    return youtubeId;
+    return undefined;
   }
 }
 
@@ -111,7 +125,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const videoTitle = await fetchYoutubeTitle(youtubeId);
+    const oembed = await fetchOembed(youtubeId);
+    const videoTitle = oembed?.title || youtubeId;
 
     const record: AirtableVideoRecord = {
       fields: {
@@ -149,6 +164,7 @@ export async function POST(request: NextRequest) {
         youtubeId: created.youtubeId,
         style: created.style,
         thumbnailUrl: thumbnailUrlFor(created.youtubeId),
+        channelName: oembed?.author_name?.trim(),
       },
     });
   } catch (error) {
