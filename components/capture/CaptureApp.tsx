@@ -324,6 +324,29 @@ export function CaptureApp({ audience }: { audience: Audience }) {
             ? () => captureState.setPhase("tags")
             : undefined;
 
+  // Student site only: a title on Playing, so someone arriving from the
+  // reader's "Try the annotation tool" link (which skips the Select screen)
+  // knows where they are. The expert site shows no title here.
+  const playingTitleNode =
+    isStudent && captureState.phase === "playing" ? (
+      <h1
+        style={{
+          fontFamily: "var(--font-display)",
+          fontWeight: 900,
+          fontSize: isDesktop ? "36px" : "28px",
+          lineHeight: 1,
+          letterSpacing: "-0.5px",
+          color: "var(--on-dark)",
+          // Desktop: cancel the column's --side-padding-video, the same way
+          // YouTubePlayer goes full-bleed, so the title lines up with the
+          // video's left edge.
+          margin: isDesktop ? "0 0 32px calc(-1 * var(--side-padding-video))" : 0,
+        }}
+      >
+        Annotate a jogo
+      </h1>
+    ) : null;
+
   const topbarNode = showTopControls ? (
     isCapturePhase ? (
       <CaptureTopbar
@@ -337,10 +360,23 @@ export function CaptureApp({ audience }: { audience: Audience }) {
       <div
         style={{
           display: "flex",
-          justifyContent: "flex-end",
-          marginBottom: "16px",
+          alignItems: "center",
+          justifyContent: isStudent && !isDesktop ? "space-between" : "flex-end",
+          gap: "16px",
+          // Student mobile: the 28px title is centered against the 34px close
+          // button, so its box ends 3px above this row's bottom. 29px here
+          // puts the title box exactly 32px (grid xl) above the video.
+          marginBottom: isStudent && !isDesktop ? "29px" : "16px",
+          // Student mobile: cancel the page's --side-padding-video so the
+          // title and close button sit flush with the full-bleed video's
+          // edges, the same way YouTubePlayer goes full-bleed.
+          marginInline:
+            isStudent && !isDesktop ? "calc(-1 * var(--side-padding-video))" : undefined,
         }}
       >
+        {/* Mobile: the student title shares the close button's row. Desktop
+            renders it above the video instead (see playingTitleNode). */}
+        {!isDesktop && playingTitleNode}
         <button
           className="icon-btn"
           onClick={() => captureState.backToSelect()}
@@ -570,6 +606,7 @@ export function CaptureApp({ audience }: { audience: Audience }) {
                   />
                 </div>
               )}
+              {playingTitleNode}
               {videoNode}
               {/* Playing's whole phaseNode is transport controls (speed/
                   skip/play/scrub) for the video above it — on desktop they
