@@ -179,7 +179,7 @@ export function CaptureApp({ audience }: { audience: Audience }) {
           captureState.setSelectedVideo(videoId);
           captureState.setPhase("playing");
         }}
-        onVideoAdded={(video) => setVideos((prev) => [...prev, video])}
+        onVideoAdded={(video) => setVideos((prev) => [video, ...prev])}
         annotatorName={captureState.annotatorName}
         onAnnotatorNameChange={captureState.setAnnotatorName}
       />
